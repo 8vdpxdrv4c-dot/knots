@@ -19,6 +19,8 @@ export interface Guide {
   path: GuideKey[];
   /** Softness of the pull (XPBD compliance, m/N). Leave it out for a firm grip; larger values pull like a spring. */
   compliance?: number;
+  /** Strongest pull in newtons. Leave it out for a light hand; cinching stiff rope needs more. */
+  force?: number;
 }
 
 export interface Step {

@@ -36,6 +36,44 @@ describe.each(knots)("$name", (knot) => {
     expect(widest).toBeLessThan(0.9 * knot.rope.length);
   });
 
+  test("cinches: little rope is left inside the knot at the end", () => {
+    // Arc between the first and last particle touching distant rope; an open loop keeps most of the rope in it.
+    const a = (total - 1) * n * 3;
+    let lo = n;
+    let hi = -1;
+    for (let i = 0; i < n; i++)
+      for (let j = i + 4; j < n; j++) {
+        const d = Math.hypot(
+          all[a + i * 3] - all[a + j * 3],
+          all[a + i * 3 + 1] - all[a + j * 3 + 1],
+          all[a + i * 3 + 2] - all[a + j * 3 + 2],
+        );
+        if (d < 2.6 * knot.rope.radius) {
+          lo = Math.min(lo, i);
+          hi = Math.max(hi, j);
+        }
+      }
+    expect(hi).toBeGreaterThan(lo);
+    // A loose knot with an open eye keeps about 0.4 of the rope in it; a cinched one about 0.28.
+    expect((hi - lo) * spacing).toBeLessThan(0.32 * knot.rope.length);
+  });
+
+  test("rope never passes through rope, even under the hardest pull", () => {
+    let closest = Infinity;
+    for (let f = 0; f < total; f++)
+      for (let i = 0; i < n; i++)
+        for (let j = i + 8; j < n; j++) {
+          const a = f * n * 3 + i * 3;
+          const b = f * n * 3 + j * 3;
+          closest = Math.min(
+            closest,
+            Math.hypot(all[a] - all[b], all[a + 1] - all[b + 1], all[a + 2] - all[b + 2]),
+          );
+        }
+    // Contact keeps centres a diameter (2r) apart; well under that means one strand went through another.
+    expect(closest).toBeGreaterThan(1.5 * knot.rope.radius);
+  });
+
   test("steps are in time order and inside the timeline", () => {
     const ts = knot.steps.map((s) => s.t);
     expect(ts).toEqual([...ts].sort((a, b) => a - b));

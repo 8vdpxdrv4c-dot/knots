@@ -24,17 +24,17 @@ export const overhand: KnotDef = {
     {
       at: 0.554,
       grab: 0.5,
-      path: [{ t: 1.3, p: [0.05, 0.03, 0.03] }, { t: 1.9, p: [0.03, R, 0.045] }, { t: 2.4 }],
+      path: [{ t: 1.3, p: [0.04, 0.03, 0.04] }, { t: 1.9, p: [0.03, R, 0.045] }, { t: 2.4 }],
     },
     {
       at: 0.665,
       grab: 0.6,
-      path: [{ t: 1.4, p: [0.08, 0.06, 0.09] }, { t: 2.0, p: [-0.035, R, 0.13] }, { t: 3.6 }],
+      path: [{ t: 1.4, p: [-0.02, 0.07, 0.13] }, { t: 2.0, p: [-0.035, R, 0.13] }, { t: 3.6 }],
     },
     {
       at: 0.775,
       grab: 0.7,
-      path: [{ t: 1.5, p: [0.06, 0.08, 0.13] }, { t: 2.1, p: [-0.11, R, 0.065] }, { t: 2.4 }],
+      path: [{ t: 1.5, p: [-0.1, 0.07, 0.08] }, { t: 2.1, p: [-0.11, R, 0.065] }, { t: 2.4 }],
     },
     {
       at: 1,
@@ -67,8 +67,20 @@ export const overhand: KnotDef = {
       ],
     },
 
-    // Phase 3: pull both ends apart like a spring, so the knot cinches against itself.
-    { at: 0, grab: 4.2, compliance: 0.03, path: [{ t: 5.4, p: [-0.65, 0.04, 0] }, { t: 6.2 }] },
-    { at: 1, grab: 4.2, compliance: 0.03, path: [{ t: 5.4, p: [0.65, 0.04, 0] }, { t: 6.2 }] },
+    // Phase 3: pull both ends hard, so the knot cinches: thick stiff rope takes a couple of hundred newtons.
+    {
+      at: 0,
+      grab: 4.2,
+      compliance: 0.001,
+      force: 250,
+      path: [{ t: 5.4, p: [-0.65, 0.04, 0] }, { t: 6.2 }],
+    },
+    {
+      at: 1,
+      grab: 4.2,
+      compliance: 0.001,
+      force: 250,
+      path: [{ t: 5.4, p: [0.65, 0.04, 0] }, { t: 6.2 }],
+    },
   ],
 };
