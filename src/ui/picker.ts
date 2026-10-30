@@ -20,5 +20,8 @@ export function createPicker(knots: KnotDef[], currentId: string) {
   document.getElementById("pick")!.onclick = () => dialog.showModal();
   document.getElementById("close-picker")!.onclick = () => dialog.close();
   // The sheet fills the dialog, so a click on the dialog itself is a click on the backdrop.
-  dialog.onclick = (e) => e.target === dialog && dialog.close();
+  // Braces matter: an onclick that returns false cancels the click, and the knot links stop working.
+  dialog.onclick = (e) => {
+    if (e.target === dialog) dialog.close();
+  };
 }
