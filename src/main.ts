@@ -18,7 +18,7 @@ const timeline = new Timeline(knot, () => {
 const rope = new RopeMesh(
   timeline.n,
   knot.rope,
-  createRopeMaterial("#d9693a", stage.renderer.capabilities.getMaxAnisotropy()),
+  createRopeMaterial("#c39f6a", stage.renderer.capabilities.getMaxAnisotropy()),
 );
 stage.scene.add(rope);
 

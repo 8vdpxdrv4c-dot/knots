@@ -25,6 +25,7 @@ export function createStage(canvas: HTMLCanvasElement) {
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
   key.shadow.radius = 5;
+  key.shadow.intensity = 0.65; // the fill and room light reach into the shade; full-strength shadows read too heavy
   key.shadow.bias = -0.0004;
   key.shadow.normalBias = 0.002;
   Object.assign(key.shadow.camera, {
@@ -36,6 +37,8 @@ export function createStage(canvas: HTMLCanvasElement) {
     far: 3.5,
   });
   scene.add(key);
+  // Weak warm fill from below and around, so shadows read soft brown, never black or grey.
+  scene.add(new THREE.HemisphereLight("#fff4e6", "#a8875c", 0.35));
 
   const table = new THREE.Mesh(
     new THREE.PlaneGeometry(12, 12),
