@@ -36,11 +36,66 @@ body {
   cursor: grabbing;
 }
 
+.top {
+  position: fixed;
+  top: 12px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chip,
+.icon-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  backdrop-filter: blur(14px) saturate(1.2);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 550;
+  text-decoration: none;
+}
+
+.chip {
+  padding: 0 14px 0 12px;
+}
+
+.icon-link {
+  justify-content: center;
+  width: 40px;
+}
+
+.chip svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.icon-link svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
 .intro {
   position: fixed;
-  top: 28px;
-  left: 32px;
-  max-width: 34ch;
+  top: 68px;
+  left: 16px;
+  width: min(34ch + 36px, calc(100% - 32px));
+  padding: 14px 18px 16px;
+  border: 1px solid rgb(255 255 255 / 0.55);
+  border-radius: var(--radius);
+  background: rgb(255 253 249 / 0.45);
+  backdrop-filter: blur(18px) saturate(1.5);
   pointer-events: none;
 }
 
@@ -71,7 +126,7 @@ h1 {
 .player {
   position: fixed;
   left: 50%;
-  bottom: 24px;
+  bottom: 40px;
   transform: translateX(-50%);
   width: min(760px, calc(100% - 32px));
   padding: 14px 16px 12px;
@@ -297,19 +352,129 @@ button {
   color: var(--accent);
 }
 
-@media (max-width: 560px) {
-  .intro {
-    top: 16px;
-    left: 16px;
-    right: 16px;
-  }
+.credit {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
 
+.credit a {
+  color: inherit;
+  font-weight: 600;
+}
+
+#picker {
+  width: min(480px, calc(100% - 32px));
+  max-height: min(640px, calc(100dvh - 32px));
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: #fffdf9;
+  color: var(--ink);
+  box-shadow: 0 24px 64px -16px rgb(35 32 28 / 0.45);
+}
+
+#picker::backdrop {
+  background: rgb(35 32 28 / 0.4);
+  backdrop-filter: blur(3px);
+}
+
+.sheet {
+  padding: 8px 16px 16px;
+}
+
+.sheet-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.sheet h2 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+
+.close {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+}
+
+.close svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.knot-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.knot-list a {
+  display: block;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: inherit;
+  text-decoration: none;
+}
+
+.knot-list a:active {
+  background: var(--accent-soft);
+}
+
+.knot-list a[aria-current="page"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.knot-list strong {
+  display: block;
+  font-weight: 600;
+}
+
+.knot-list span {
+  display: block;
+  margin-top: 2px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+@media (max-width: 560px) {
   #knot-summary {
     font-size: 14px;
   }
 
-  .player {
-    bottom: 12px;
+  /* Bottom sheet on phones. */
+  #picker {
+    width: 100%;
+    max-width: none;
+    margin: auto 0 0;
+    border-radius: 20px 20px 0 0;
+    border-bottom: 0;
+  }
+
+  .sheet {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
 
   .bar {

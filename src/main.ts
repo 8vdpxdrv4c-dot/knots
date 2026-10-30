@@ -1,10 +1,10 @@
-import "./style.css";
 import * as THREE from "three";
 import { knots } from "./knots";
 import { createRopeMaterial } from "./render/ropeMaterial";
 import { RopeMesh } from "./render/ropeMesh";
 import { createPropMesh, createStage } from "./render/stage";
 import { Timeline } from "./timeline";
+import { createPicker } from "./ui/picker";
 import { createControls, type PlayerState } from "./ui/controls";
 
 const LOOP_REST = 1.2; // seconds to show the finished knot before looping
@@ -47,6 +47,8 @@ const draw = createControls(knot, timeline.duration, {
     state.loop = !state.loop;
   },
 });
+
+createPicker(knots, knot.id);
 
 const clock = new THREE.Timer();
 stage.renderer.setAnimationLoop((now) => {

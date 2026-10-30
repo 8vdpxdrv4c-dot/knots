@@ -61,6 +61,7 @@ export function createControls(knot: KnotDef, duration: number, actions: PlayerA
 
   document.addEventListener("keydown", (e) => {
     // Let focused controls handle their own keys.
+    if (document.querySelector("dialog[open]")) return;
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLButtonElement) return;
     if (e.key === " ") {
       e.preventDefault();
