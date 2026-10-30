@@ -67,7 +67,7 @@ export function createStage(canvas: HTMLCanvasElement) {
   scene.add(table);
 
   const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 20);
-  camera.position.set(0.02, 0.72, 0.92);
+  camera.position.set(0.02, 1.15, 0.69); // about 60° above the table
   const controls = new OrbitControls(camera, canvas);
   controls.target.set(0.02, 0.02, 0.04);
   controls.enableDamping = true;

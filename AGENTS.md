@@ -61,6 +61,18 @@ Props are static: `solveProps` pushes particles out and applies friction, once p
 
 Data only: write a `KnotDef` in `src/knots/`, add it to `knots/index.ts`. Do not add knot-specific code to the engine. Guide `at` is a fraction along its rope; the table is at y = 0, ropes rest at y = radius; the camera looks from +z. Every knot in the list is run through `src/knots/knots.test.ts`, which assumes **one rope** and a knot that ties and cinches; a multi-rope knot needs its own tests.
 
+### Choreography: think in hands, not pins
+
+Guides are hands. A natural move grabs one point and lets physics carry the rest; driving several points of the same stretch on their own paths makes them fight and the rope looks puppeted.
+
+- **One hand per move.** To flip a curve over, grab one point on it (about its middle) and carry it; let the rest follow. Pins that only laid out a shape let go (end their path with a bare `{ t }`) before the next move starts.
+- **Tie near the working end.** A long tail must be dragged and swung round, which causes waves, hooks and whipping. Use only as much tail as the tuck needs.
+- **Lay rope straight.** If two pins hold less distance apart than the rope between them, the slack bows into a wave. Space targets by about the rope length between the pinned points.
+- **The end leads.** When the end travels, keep it ahead of the rope behind it so it points where it is going, not trailing as a hook.
+- **Lift low.** Clear the rope underneath by a little (centre about 3–4 radii up). Rope lifted high toward the camera is seen end-on and its strands read as noise.
+- **Pull both ends evenly.** Final pull targets far enough apart to cinch (the cinch test), and centred on the knot so it does not slide (the "stays where it was tied" test).
+- **Check what a stage looks like** in the browser at a few step times, not only the tests: tests catch topology and cinching, not awkward motion.
+
 ## Gotchas
 
 - Physics constants in `rope.ts` were tuned with metrics sweeps; change them deliberately and re-run the full tests. The existing overhand must keep baking bit-identically unless a change is intended.
