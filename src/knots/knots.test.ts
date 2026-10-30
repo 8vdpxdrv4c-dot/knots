@@ -110,6 +110,7 @@ describe.each(knots)("$name strand twist", (knot) => {
     let worstDot = 0;
     let worstTwist = 0;
     let worstSmoothTwist = 0;
+    let worstRoll = 0;
     bake(knot, ({ frames, normals }) => {
       const tangent = (o: number) => {
         const a = Math.max(o - 3, 0);
@@ -149,11 +150,17 @@ describe.each(knots)("$name strand twist", (knot) => {
           worstTwist = Math.max(worstTwist, twist);
           // Sharp pinches under a guide (> 15° per segment) are exempt from the tight limit.
           if (cos > Math.cos(Math.PI / 12)) worstSmoothTwist = Math.max(worstSmoothTwist, twist);
+          // Standing tail, still lying along the way it was laid: roll around the rope from up.
+          if (i < n * 0.35 && t[0] > 0.92)
+            worstRoll = Math.max(worstRoll, Math.abs(Math.atan2(nn[2], nn[1])));
         }
     });
     expect(worstDot).toBeLessThan(0.05);
     // Neighbouring particles twist less than 10° apart, so strands never look loosened.
     expect(worstSmoothTwist).toBeLessThan(Math.PI / 18);
     expect(worstTwist).toBeLessThan(Math.PI / 6);
+    // The loop's writhe must not roll the tail on the table. That roll used to keep going
+    // through the start of the tuck, until this side of the rope was lifted.
+    expect(worstRoll).toBeLessThan(Math.PI / 18);
   });
 });

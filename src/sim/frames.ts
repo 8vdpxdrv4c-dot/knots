@@ -1,8 +1,9 @@
 /**
- * A "which way is up" direction carried by each particle from frame to frame, so the rope's
- * twist belongs to the material: strands stay put as the rope bends instead of spinning
- * around it. Each frame, every normal is turned with its own tangent and blended with its
- * neighbours, which keeps the twist smooth along the rope like a rope's torsional stiffness.
+ * Which way is up along the rope, so the strands stay put as it bends instead of spinning
+ * around it. The first particle keeps the facing it started with, turned only by its own
+ * tangent. The rest is parallel-transported from there, with no extra twist. Averaging twist
+ * along the rope would treat the loop's writhe as twist of the whole rope, and the straight
+ * tail on the table would slowly roll while the knot is tied.
  */
 export class MaterialFrames {
   readonly normals: Float64Array;
@@ -33,44 +34,32 @@ export class MaterialFrames {
       t[i * 3 + 1] = dy / len;
       t[i * 3 + 2] = dz / len;
     }
-    // Carry each normal through its own tangent's turn since the last frame.
-    for (let i = 0; i < n; i++) {
-      rotate(tmp, N, i * 3, prevT, i * 3, t, i * 3);
-      N.set(tmp, i * 3);
+    // Standing end: turn only with its own tangent, so a loop ahead of it cannot roll it.
+    rotate(tmp, N, 0, prevT, 0, t, 0);
+    lay(N, t, 0, tmp);
+    for (let i = 1; i < n; i++) {
+      rotate(tmp, N, (i - 1) * 3, t, (i - 1) * 3, t, i * 3);
+      lay(N, t, i, tmp);
     }
     prevT.set(t);
-    // Forward and backward sweeps spread twist both ways along the rope.
-    for (let pass = 0; pass < 12; pass++) {
-      for (let i = 0; i < n; i++) this.relax(i);
-      for (let i = n - 1; i >= 0; i--) this.relax(i);
-    }
   }
+}
 
-  private relax(i: number): void {
-    const { n, normals: N, t, tmp } = this;
-    const o = i * 3;
-    // Low self-weight means stiff torsion: neighbours quickly agree on the twist.
-    let x = 0.25 * N[o];
-    let y = 0.25 * N[o + 1];
-    let z = 0.25 * N[o + 2];
-    for (const j of [i - 1, i + 1]) {
-      if (j < 0 || j >= n) continue;
-      // Turn the neighbour's normal by the bend between the two tangents, so bending is not twist.
-      rotate(tmp, N, j * 3, t, j * 3, t, o);
-      x += tmp[0];
-      y += tmp[1];
-      z += tmp[2];
-    }
-    const dot = x * t[o] + y * t[o + 1] + z * t[o + 2];
-    x -= dot * t[o];
-    y -= dot * t[o + 1];
-    z -= dot * t[o + 2];
-    const len = Math.hypot(x, y, z);
-    if (len < 1e-9) return; // keep the old normal if this one is degenerate
-    N[o] = x / len;
-    N[o + 1] = y / len;
-    N[o + 2] = z / len;
-  }
+/** Drops v's component along the tangent and stores a unit normal. Keeps the old normal if that vanishes. */
+function lay(normals: Float64Array, tangent: Float64Array, i: number, v: number[]): void {
+  const o = i * 3;
+  const tx = tangent[o];
+  const ty = tangent[o + 1];
+  const tz = tangent[o + 2];
+  const dot = v[0] * tx + v[1] * ty + v[2] * tz;
+  const x = v[0] - dot * tx;
+  const y = v[1] - dot * ty;
+  const z = v[2] - dot * tz;
+  const len = Math.hypot(x, y, z);
+  if (len < 1e-9) return;
+  normals[o] = x / len;
+  normals[o + 1] = y / len;
+  normals[o + 2] = z / len;
 }
 
 /** Writes v (at vi) turned by the smallest rotation that takes tangent `from` (at fi) to `to` (at ti). */
