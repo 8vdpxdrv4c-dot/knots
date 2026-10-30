@@ -3,6 +3,7 @@ import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
 import { createCutFaceTexture } from "./ropeMaterial";
+import { KEY_LIGHT } from "./stage";
 
 const STRANDS = 3;
 const RADIAL = 20; // vertices around each strand
@@ -28,11 +29,12 @@ const SLEEVE = 1.2; // sleeve length, in radii
 const SQUEEZE = 0.9;
 const WALL = 0.09; // sleeve wall thickness, in visual radii
 const TUFTS = 300; // fibres standing out of each strand's cut end, spread over the whole face
-const NEAR = 8; // other rope parts remembered per particle, for contact shading
+const NEAR = 12; // closest other rope parts remembered per particle, for contact shading
 // Groove colour: about half as bright as the crest and greyer, the strongest cue of twisted rope.
 const GROOVE = [0.5, 0.49, 0.5];
 const DIRT = [0.78, 0.76, 0.76]; // greyer, darker wear where rope presses on rope in the knot
 const CONTACT_SHADOW = 0x4a3524; // warm brown, so the shadow under the rope is not grey
+const TO_LIGHT = KEY_LIGHT.clone().normalize();
 
 /**
  * Three-strand laid rope built around the simulated centerline every frame.
@@ -65,6 +67,7 @@ export class RopeMesh extends THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
   private readonly radius: number;
   private readonly near: Int16Array; // per particle, up to NEAR particles of other rope close by
   private readonly nearCount: Uint8Array;
+  private readonly nearDist: Float32Array;
   private readonly contact: Float32Array; // per particle: 0 free, 1 pressed into the knot
   /** Soft shadow on the table right under the rope, darker the closer the rope lies. */
   private readonly ground: THREE.Mesh;
@@ -190,6 +193,7 @@ export class RopeMesh extends THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
     this.radius = radius;
     this.near = new Int16Array(n * NEAR);
     this.nearCount = new Uint8Array(n);
+    this.nearDist = new Float32Array(n * NEAR);
     this.contact = new Float32Array(n);
 
     // Ground strip: edge, middle, edge per sample; colour alpha fades across and with height.
@@ -415,7 +419,14 @@ export class RopeMesh extends THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
           const y = center.y + (sn.y * cosA * rs + sb.y * sinA * rw) * ringR;
           const z = center.z + (sn.z * cosA * rs + sb.z * sinA * rw) * ringR;
           const pi = Math.min(Math.round(kk / SUB), n - 1);
-          const open = 1 - 0.65 * this.occlusion(p, pi, x, y, z, dir);
+          // Blend the particles either side, so shade does not step where the nearest one changes.
+          const pa = Math.min(Math.floor(kk / SUB), n - 1);
+          const pb = Math.min(pa + 1, n - 1);
+          const f = kk / SUB - pa;
+          const occ =
+            (1 - f) * this.occlusion(p, pa, x, y, z, dir) + f * this.occlusion(p, pb, x, y, z, dir);
+          // Sides facing the key light keep most of their light: the shadow map darkens them if blocked.
+          const open = 1 - 0.65 * occ * (1 - 0.7 * Math.max(0, dir.dot(TO_LIGHT)));
           const worn = this.contact[pi] * 0.7;
           if (tilt !== 0) {
             // Cut face: packed fibre ends, lit straight on, mottled bundle to bundle. Groove and
@@ -524,7 +535,7 @@ export class RopeMesh extends THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
 
   /** For each particle, the nearby particles of other rope, and how pressed into the knot it is. */
   private findContacts(p: Float32Array): void {
-    const { n, near, nearCount, contact, radius } = this;
+    const { n, nearCount, contact, radius } = this;
     const reach = 3.2 * radius;
     const skip = 4; // neighbours along the rope always touch; they are not contact
     nearCount.fill(0);
@@ -540,13 +551,28 @@ export class RopeMesh extends THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
         const press = Math.min(1, (reach - d) / (reach - 2 * radius));
         contact[i] = Math.min(1, contact[i] + 0.5 * press);
         contact[j] = Math.min(1, contact[j] + 0.5 * press);
-        if (nearCount[i] < NEAR) near[i * NEAR + nearCount[i]++] = j;
-        if (nearCount[j] < NEAR) near[j * NEAR + nearCount[j]++] = i;
+        this.remember(i, j, d);
+        this.remember(j, i, d);
       }
     // Spread along the rope so wear fades in and out instead of switching per particle.
     for (let pass = 0; pass < 2; pass++)
       for (let i = 1; i < n - 1; i++)
         contact[i] = Math.max(contact[i], (contact[i - 1] + contact[i + 1]) * 0.4);
+  }
+
+  /** Keeps j among i's NEAR closest parts of other rope, dropping the farthest when full. */
+  private remember(i: number, j: number, d: number): void {
+    const { near, nearCount, nearDist } = this;
+    const o = i * NEAR;
+    let slot = nearCount[i];
+    if (slot < NEAR) nearCount[i]++;
+    else {
+      slot = 0;
+      for (let q = 1; q < NEAR; q++) if (nearDist[o + q] > nearDist[o + slot]) slot = q;
+      if (nearDist[o + slot] <= d) return;
+    }
+    near[o + slot] = j;
+    nearDist[o + slot] = d;
   }
 
   /** How much of a surface point's view is blocked by nearby rope it faces (0 open, 1 buried). */
@@ -568,11 +594,12 @@ export class RopeMesh extends THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
       const d = Math.hypot(dx, dy, dz) || 1;
       const facing = (dx * nrm.x + dy * nrm.y + dz * nrm.z) / d;
       if (facing <= 0) continue;
-      occ += facing * Math.max(0, 1 - (d - radius) / (2.5 * radius));
+      const u = Math.min(1, Math.max(0, (d - radius) / (1.5 * radius)));
+      occ += facing * (1 - u * u * (3 - 2 * u)); // smoothstep: no crease where the falloff starts
     }
     // The table occludes the underside too.
     occ += Math.max(0, -nrm.y) * Math.max(0, 1 - (y - 0) / (2 * radius)) * 0.6;
-    return Math.min(1, occ);
+    return 1 - Math.exp(-1.6 * occ); // saturates softly, so packed spots shade in gradually
   }
 
   private updateGround(): void {

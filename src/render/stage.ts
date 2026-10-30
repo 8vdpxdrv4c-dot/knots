@@ -4,6 +4,8 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import type { Prop } from "../knots/types";
 
 const BACKGROUND = "#ece7de";
+/** Where the key light sits; the rope shades its contact darkening by it too. */
+export const KEY_LIGHT = new THREE.Vector3(-0.6, 1.6, 0.9);
 
 /** A fixed prop, drawn from the same axis and radius the simulation collides with. */
 export function createPropMesh({ kind, a, b, radius }: Prop): THREE.Mesh {
@@ -39,7 +41,7 @@ export function createStage(canvas: HTMLCanvasElement) {
   scene.environmentIntensity = 0.9;
 
   const key = new THREE.DirectionalLight("#fff4e8", 2.6);
-  key.position.set(-0.6, 1.6, 0.9);
+  key.position.copy(KEY_LIGHT);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
   key.shadow.radius = 5;
