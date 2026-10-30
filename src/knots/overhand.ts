@@ -20,7 +20,8 @@ export const overhand: KnotDef = {
   ],
   guides: [
     // Phase 1: lift the working half into a loop that crosses over the standing part at x = -0.08.
-    { at: 0.5, grab: 0.4, path: [{ t: 4.0 }] },
+    // Holds the loop down until the pull has taken over, or the end being drawn out drags it across the table.
+    { at: 0.5, grab: 0.4, path: [{ t: 4.6 }] },
     {
       at: 0.554,
       grab: 0.5,
@@ -39,6 +40,7 @@ export const overhand: KnotDef = {
     {
       at: 1,
       grab: 0.4,
+      force: 20, // lifting the end and the rope trailing on the table; lighter, it lags and then whips
       path: [
         { t: 1.0, p: [0.32, 0.09, 0.14] },
         { t: 1.6, p: [0.02, 0.1, 0.13] },
@@ -68,19 +70,20 @@ export const overhand: KnotDef = {
     },
 
     // Phase 3: pull both ends hard, so the knot cinches: thick stiff rope takes a couple of hundred newtons.
+    // Targets sit where both tails come out evenly, so the knot (at x ≈ -0.06, more rope to its left) stays put.
     {
       at: 0,
       grab: 4.2,
       compliance: 0.001,
       force: 250,
-      path: [{ t: 5.4, p: [-0.65, 0.04, 0] }, { t: 6.2 }],
+      path: [{ t: 5.4, p: [-0.95, 0.04, 0] }, { t: 6.2 }],
     },
     {
       at: 1,
       grab: 4.2,
       compliance: 0.001,
       force: 250,
-      path: [{ t: 5.4, p: [0.65, 0.04, 0] }, { t: 6.2 }],
+      path: [{ t: 5.4, p: [0.35, 0.04, 0] }, { t: 6.2 }],
     },
   ],
 };

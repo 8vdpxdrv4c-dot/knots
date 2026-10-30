@@ -14,6 +14,25 @@ describe.each(knots)("$name", (knot) => {
     const b = a + (n - 1) * 3;
     return Math.hypot(all[a] - all[b], all[a + 1] - all[b + 1], all[a + 2] - all[b + 2]);
   };
+  /** First and last particle touching distant rope in frame f: the stretch of rope inside the knot. */
+  const knotRange = (f: number) => {
+    const a = f * n * 3;
+    let lo = n;
+    let hi = -1;
+    for (let i = 0; i < n; i++)
+      for (let j = i + 4; j < n; j++) {
+        const d = Math.hypot(
+          all[a + i * 3] - all[a + j * 3],
+          all[a + i * 3 + 1] - all[a + j * 3 + 1],
+          all[a + i * 3 + 2] - all[a + j * 3 + 2],
+        );
+        if (d < 2.6 * knot.rope.radius) {
+          lo = Math.min(lo, i);
+          hi = Math.max(hi, j);
+        }
+      }
+    return [lo, hi];
+  };
 
   test("stays finite and never overstretches", () => {
     expect(all.every(Number.isFinite)).toBe(true);
@@ -37,25 +56,29 @@ describe.each(knots)("$name", (knot) => {
   });
 
   test("cinches: little rope is left inside the knot at the end", () => {
-    // Arc between the first and last particle touching distant rope; an open loop keeps most of the rope in it.
-    const a = (total - 1) * n * 3;
-    let lo = n;
-    let hi = -1;
-    for (let i = 0; i < n; i++)
-      for (let j = i + 4; j < n; j++) {
-        const d = Math.hypot(
-          all[a + i * 3] - all[a + j * 3],
-          all[a + i * 3 + 1] - all[a + j * 3 + 1],
-          all[a + i * 3 + 2] - all[a + j * 3 + 2],
-        );
-        if (d < 2.6 * knot.rope.radius) {
-          lo = Math.min(lo, i);
-          hi = Math.max(hi, j);
-        }
-      }
+    // An open loop keeps most of the rope inside the knot.
+    const [lo, hi] = knotRange(total - 1);
     expect(hi).toBeGreaterThan(lo);
     // A loose knot with an open eye keeps about 0.4 of the rope in it; a cinched one about 0.28.
     expect((hi - lo) * spacing).toBeLessThan(0.32 * knot.rope.length);
+  });
+
+  test("the knot stays where it was tied while it is pulled tight", () => {
+    // Hands pull away from the knot from both sides; the knot sliding along the table means one
+    // side is pulled harder or further than the other.
+    const centre = (f: number) => {
+      const [lo, hi] = knotRange(f);
+      let x = 0;
+      let z = 0;
+      for (let i = lo; i <= hi; i++) {
+        x += all[f * n * 3 + i * 3];
+        z += all[f * n * 3 + i * 3 + 2];
+      }
+      return [x / (hi - lo + 1), z / (hi - lo + 1)];
+    };
+    const [x0, z0] = centre(Math.floor(total * 0.6));
+    const [x1, z1] = centre(total - 1);
+    expect(Math.hypot(x1 - x0, z1 - z0)).toBeLessThan(6 * knot.rope.radius);
   });
 
   test("rope never passes through rope, even under the hardest pull", () => {

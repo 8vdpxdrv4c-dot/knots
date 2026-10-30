@@ -4,8 +4,9 @@ const STRANDS = 3;
 const RADIAL = 16; // vertices around each strand
 const SUB = 3; // smooth samples per particle gap
 const CAP = 4; // rings in each strand's rounded end
-// Drawn slightly thinner than the collision radius so contacts never show as overlap.
-const VISUAL_SCALE = 0.93;
+// Strand crests reach a little past the collision radius: where rope presses on rope in a knot,
+// the strands meet and nest into each other's grooves instead of leaving a visible gap.
+const VISUAL_SCALE = 1.08;
 const OFFSET = 0.53; // strand axis distance from the rope axis, in visual radii
 const STRAND_R = 0.47; // strand radius in visual radii; neighbours just touch (√3 · 0.53 ≈ 2 · 0.47)
 const LAY = 7; // rope length per full turn of the strands, in radii
