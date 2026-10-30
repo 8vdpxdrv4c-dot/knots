@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
+import { createCutFaceTexture } from "./ropeMaterial";
 
 const STRANDS = 3;
 const RADIAL = 20; // vertices around each strand
@@ -25,8 +26,8 @@ const HAIR_WIDTH = 0.00035; // m: real fibre width, so hairs thin out as the cam
 const SLEEVE = 1.2; // sleeve length, in radii
 // The sleeve is crimped on: rope under it is squeezed to SQUEEZE, and its lips bite in further.
 const SQUEEZE = 0.9;
-const SLEEVE_R = 0.96; // sleeve outer radius, in visual radii
-const SPLAY = 0.1; // cut strands spread apart this much at the very tip
+const WALL = 0.09; // sleeve wall thickness, in visual radii
+const TUFTS = 300; // fibres standing out of each strand's cut end, spread over the whole face
 const NEAR = 8; // other rope parts remembered per particle, for contact shading
 // Groove colour: about half as bright as the crest and greyer, the strongest cue of twisted rope.
 const GROOVE = [0.5, 0.49, 0.5];
@@ -55,8 +56,12 @@ export class RopeMesh extends THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
   private readonly hairs: LineSegments2;
   private readonly hairRoot: Uint32Array; // strand vertex each fibre grows from
   private readonly hairShape: Float32Array; // length, lean along the rope, curl, sideways, per fibre
+  private readonly bodyHairs: number; // fibres from here on grow out of the cut faces
+  private readonly tuftAt: Float32Array; // per cut-face fibre: which disc, angle around it, distance out
   private readonly ds: number; // centreline length between samples
   private readonly sleeves: THREE.Mesh[];
+  /** Cut end of each strand at both rope ends, showing the yarns packed inside it. */
+  private readonly cutFaces: THREE.Mesh;
   private readonly radius: number;
   private readonly near: Int16Array; // per particle, up to NEAR particles of other rope close by
   private readonly nearCount: Uint8Array;
@@ -104,7 +109,8 @@ export class RopeMesh extends THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
     this.frustumCulled = false;
 
     // Fibres grow only on the outer half of each strand, where the rope rubs and frays.
-    const count = Math.round((rope.length / radius) * HAIRS_PER_RADIUS * STRANDS);
+    const body = Math.round((rope.length / radius) * HAIRS_PER_RADIUS * STRANDS);
+    const count = body + 2 * STRANDS * TUFTS;
     this.ds = rope.length / (n - 1) / SUB;
     // No fibres under the sleeves or on the sealed tips.
     const endZone = Math.ceil(((TIP + SLEEVE) * radius) / this.ds);
@@ -120,7 +126,7 @@ export class RopeMesh extends THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
       const i = Math.min(Math.floor(x), patches.length - 2);
       return patches[i] + (patches[i + 1] - patches[i]) * (x - i);
     };
-    for (let h = 0; h < count; h++) {
+    for (let h = 0; h < body; h++) {
       const s = Math.floor(rand() * STRANDS);
       let r = CAP + endZone + Math.floor(rand() * (m - 2 * endZone));
       while (rand() > 0.25 + 0.75 * density(r))
@@ -138,6 +144,16 @@ export class RopeMesh extends THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
         [len * radius, gauss() * 0.6, gauss() * 0.5, gauss() * 0.9, 0.1 + 0.9 * rand() ** 0.7],
         h * 5,
       );
+    }
+    // Tufts at the cut ends: short fibres standing out of each strand's face, splaying a little.
+    // Roots are spread evenly over the whole face (√ of a uniform number gives uniform area).
+    this.bodyHairs = body;
+    this.tuftAt = new Float32Array((count - body) * 3);
+    for (let h = body; h < count; h++) {
+      const e = h - body;
+      this.tuftAt.set([Math.floor(e / TUFTS), rand() * RADIAL, Math.sqrt(rand()) * 0.97], e * 3);
+      const len = HAIR_LENGTH * (0.5 + rand() * 1.3);
+      this.hairShape.set([len * radius, 0, gauss() * 0.3, gauss() * 0.35, 1], h * 5);
     }
     // Wide lines: plain WebGL lines are always 1 px, too fine to read as fibre.
     const hairGeometry = new LineSegmentsGeometry();
@@ -203,25 +219,34 @@ export class RopeMesh extends THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
     this.add(this.ground);
 
     // Sleeve profile, turned around the rope: rounded lips and two crimp grooves.
-    const R = SLEEVE_R * visual;
+    // Built outward from the squeezed rope, so no strand ever cuts into the wall or the lips.
+    const Ri = SQUEEZE * visual * 1.01; // inner wall, sitting on the squeezed strand crests
+    const R = Ri + WALL * visual;
+    const lip = Ri + 0.4 * WALL * visual; // rolled lip, still clear of the rope
     const L = SLEEVE * radius;
+    // A closed outline, so the sleeve is a solid tube with a wall, not a see-through shell:
+    // outer face with crimp grooves, rolled lip, then back along the inside against the rope.
     const profile = [
-      [R * 0.9, -L / 2],
+      [Ri, -L / 2],
+      [lip, -L / 2],
       [R, -L / 2 + 0.06 * L],
       [R, -0.22 * L],
-      [R * 0.93, -0.17 * L],
+      [R - 0.35 * WALL * visual, -0.17 * L],
       [R, -0.12 * L],
       [R, 0.12 * L],
-      [R * 0.93, 0.17 * L],
+      [R - 0.35 * WALL * visual, 0.17 * L],
       [R, 0.22 * L],
       [R, L / 2 - 0.06 * L],
-      [R * 0.9, L / 2],
+      [lip, L / 2],
+      [Ri, L / 2],
+      [Ri, -L / 2],
     ].map(([x, y]) => new THREE.Vector2(x, y));
     const sleeveGeometry = new THREE.LatheGeometry(profile, 40);
     const metal = new THREE.MeshStandardMaterial({
       color: 0x8a8d91,
       metalness: 1,
       roughness: 0.5,
+      side: THREE.DoubleSide, // the closed outline's winding flips on the inner wall
     });
     this.sleeves = [0, 1].map(() => {
       const sleeve = new THREE.Mesh(sleeveGeometry, metal);
@@ -230,6 +255,43 @@ export class RopeMesh extends THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
       this.add(sleeve);
       return sleeve;
     });
+
+    // One disc per strand per end: a centre vertex fanned to the strand's last ring.
+    const discs = 2 * STRANDS;
+    const perDisc = RADIAL + 2;
+    const faceGeometry = new THREE.BufferGeometry();
+    faceGeometry.setAttribute(
+      "position",
+      new THREE.BufferAttribute(new Float32Array(discs * perDisc * 3), 3),
+    );
+    faceGeometry.setAttribute(
+      "normal",
+      new THREE.BufferAttribute(new Float32Array(discs * perDisc * 3), 3),
+    );
+    const faceUv = new Float32Array(discs * perDisc * 2);
+    const fan: number[] = [];
+    for (let d = 0; d < discs; d++) {
+      const o = d * perDisc;
+      faceUv.set([0.5, 0.5], o * 2);
+      const turn = d * 2.1; // each strand shows its yarns at a different angle
+      for (let j = 0; j <= RADIAL; j++) {
+        const a = (j / RADIAL) * Math.PI * 2 + turn;
+        faceUv.set([0.5 + 0.48 * Math.cos(a), 0.5 + 0.48 * Math.sin(a)], (o + 1 + j) * 2);
+        if (j < RADIAL) fan.push(o, o + 1 + j, o + 2 + j);
+      }
+    }
+    faceGeometry.setAttribute("uv", new THREE.BufferAttribute(faceUv, 2));
+    faceGeometry.setIndex(fan);
+    this.cutFaces = new THREE.Mesh(
+      faceGeometry,
+      new THREE.MeshStandardMaterial({
+        map: createCutFaceTexture(base),
+        roughness: 0.95,
+        side: THREE.DoubleSide,
+      }),
+    );
+    this.cutFaces.frustumCulled = false;
+    this.add(this.cutFaces);
   }
 
   update(p: Float32Array, pn: Float32Array): void {
@@ -355,14 +417,20 @@ export class RopeMesh extends THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
           const pi = Math.min(Math.round(kk / SUB), n - 1);
           const open = 1 - 0.65 * this.occlusion(p, pi, x, y, z, dir);
           const worn = this.contact[pi] * 0.7;
-          const cutFace = tilt !== 0 ? 0.72 : 1; // cut fibre ends are a little darker
-          for (let c = 0; c < 3; c++)
-            col[c] =
-              (GROOVE[c] + (1 - GROOVE[c]) * lit) * open * (1 - worn + worn * DIRT[c]) * cutFace;
+          if (tilt !== 0) {
+            // Cut face: packed fibre ends, lit straight on, mottled bundle to bundle. Groove and
+            // contact shading belong to the strand's sides; here they made the face read as a hole.
+            const c = 0.82 + 0.18 * Math.abs((Math.sin(v * 12.9898) * 43758.5453) % 1);
+            col[0] = col[1] = col[2] = c;
+          } else
+            for (let c = 0; c < 3; c++)
+              col[c] = (GROOVE[c] + (1 - GROOVE[c]) * lit) * open * (1 - worn + worn * DIRT[c]);
           colors.setXYZ(v, col[0], col[1], col[2]);
           if (tilt !== 0) dir.multiplyScalar(Math.cos(tilt)).addScaledVector(st, Math.sin(tilt));
           normals.setXYZ(v, dir.x, dir.y, dir.z);
-          uvs.setXY(v, along / pitch, j / RADIAL);
+          // The cut face takes one spot of the texture: wrapping it around would pinwheel to a point.
+          if (tilt !== 0) uvs.setXY(v, along / pitch, 0.5);
+          else uvs.setXY(v, along / pitch, j / RADIAL);
         }
       }
     }
@@ -370,12 +438,54 @@ export class RopeMesh extends THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
     normals.needsUpdate = true;
     colors.needsUpdate = true;
     uvs.needsUpdate = true;
-    this.updateHairs();
     this.updateGround();
     this.updateSleeves();
+    this.updateCutFaces();
+    this.updateHairs(); // after the cut faces: end tufts grow out of them
   }
 
   /** Sits each sleeve just behind its charred tip, lined up with the rope there. */
+  /** Lays each strand's cut face over its last ring, a hair proud so it never flickers. */
+  private updateCutFaces(): void {
+    const { m, rings, tangents, radius } = this;
+    const pos = this.geometry.attributes.position as THREE.BufferAttribute;
+    const out = this.cutFaces.geometry.attributes.position as THREE.BufferAttribute;
+    const nrm = this.cutFaces.geometry.attributes.normal as THREE.BufferAttribute;
+    const perDisc = RADIAL + 2;
+    const proud = 0.02 * radius;
+    for (let end = 0; end < 2; end++) {
+      const r = end === 0 ? CAP : CAP + m - 1;
+      const t = end === 0 ? 0 : (m - 1) * 3;
+      const sign = end === 0 ? -1 : 1; // the face looks out of the rope
+      const nx = sign * tangents[t];
+      const ny = sign * tangents[t + 1];
+      const nz = sign * tangents[t + 2];
+      for (let s = 0; s < STRANDS; s++) {
+        const o = (end * STRANDS + s) * perDisc;
+        const ring = (s * rings + r) * (RADIAL + 1);
+        let cx = 0;
+        let cy = 0;
+        let cz = 0;
+        for (let j = 0; j <= RADIAL; j++) {
+          const x = pos.getX(ring + j) + nx * proud;
+          const y = pos.getY(ring + j) + ny * proud;
+          const z = pos.getZ(ring + j) + nz * proud;
+          out.setXYZ(o + 1 + j, x, y, z);
+          nrm.setXYZ(o + 1 + j, nx, ny, nz);
+          if (j < RADIAL) {
+            cx += x / RADIAL;
+            cy += y / RADIAL;
+            cz += z / RADIAL;
+          }
+        }
+        out.setXYZ(o, cx, cy, cz);
+        nrm.setXYZ(o, nx, ny, nz);
+      }
+    }
+    out.needsUpdate = true;
+    nrm.needsUpdate = true;
+  }
+
   private updateSleeves(): void {
     const { m, centers, tangents, ds, radius } = this;
     // Exact arc position, between samples, so the tip showing past the lip is as short as set.
@@ -399,20 +509,17 @@ export class RopeMesh extends THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
 
   /**
    * How far the strands sit from the rope axis, and how big they are, near the ends: squeezed
-   * under the sleeve, then spreading apart where the rope is cut.
+   * under the sleeve.
    */
   private endShape(k: number): [number, number] {
     const r = this.radius;
     const s = Math.min(k, this.m - 1 - k) * this.ds; // from the nearer cut end
     const ease = (a: number, b: number, x: number) => Math.min(1, Math.max(0, (x - a) / (b - a)));
     // 1 inside the sleeve, easing to 0 a little past each lip.
-    const held = Math.min(
-      ease((TIP - 0.15) * r, (TIP + 0.1) * r, s),
-      1 - ease((TIP + SLEEVE - 0.1) * r, (TIP + SLEEVE + 0.3) * r, s),
-    );
+    // Squeezed from the cut tip through the sleeve, easing back to full size past its inner lip.
+    const held = 1 - ease((TIP + SLEEVE) * r, (TIP + SLEEVE + 0.4) * r, s);
     const squeeze = 1 - (1 - SQUEEZE) * held;
-    const splay = 1 + SPLAY * (1 - ease(0, TIP * r, s));
-    return [squeeze * splay, squeeze];
+    return [squeeze, squeeze];
   }
 
   /** For each particle, the nearby particles of other rope, and how pressed into the knot it is. */
@@ -523,27 +630,66 @@ export class RopeMesh extends THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
     const nrm = this.geometry.attributes.normal as THREE.BufferAttribute;
     const start = this.hairs.geometry.attributes.instanceStart as THREE.InterleavedBufferAttribute;
     const out = start.data.array as Float32Array; // per segment: start xyz, end xyz
-    const { hairRoot, hairShape, tangents, m, n, contact } = this;
+    const { hairRoot, hairShape, tangents, m, n, contact, bodyHairs, tuftAt } = this;
+    const face = this.cutFaces.geometry.attributes.position as THREE.BufferAttribute;
+    const faceNrm = this.cutFaces.geometry.attributes.normal as THREE.BufferAttribute;
+    const perDisc = RADIAL + 2;
     const ringSize = RADIAL + 1;
     for (let h = 0; h < hairRoot.length; h++) {
       const v = hairRoot[h];
-      const k = Math.min(Math.max((Math.floor(v / ringSize) % this.rings) - CAP, 0), m - 1);
+      const tuft = h >= bodyHairs;
+      const disc = tuft ? tuftAt[(h - bodyHairs) * 3] : 0;
+      const k = tuft
+        ? disc < STRANDS
+          ? 0
+          : m - 1
+        : Math.min(Math.max((Math.floor(v / ringSize) % this.rings) - CAP, 0), m - 1);
       const [base, lean, curl, side, rise] = hairShape.subarray(h * 5, h * 5 + 5);
       // Rope that rubs in the knot is a little fuzzier.
       const len = base * (0.9 + 0.3 * contact[Math.min(Math.round(k / SUB), n - 1)]);
-      const px = pos.getX(v);
-      const py = pos.getY(v);
-      const pz = pos.getZ(v);
-      const nx = nrm.getX(v);
-      const ny = nrm.getY(v);
-      const nz = nrm.getZ(v);
+      let px: number;
+      let py: number;
+      let pz: number;
+      let nx: number;
+      let ny: number;
+      let nz: number;
+      if (tuft) {
+        // A point on the cut face: between two rim vertices, part way out from the centre.
+        const a = tuftAt[(h - bodyHairs) * 3 + 1];
+        const rho = tuftAt[(h - bodyHairs) * 3 + 2];
+        const o = disc * perDisc;
+        const j = Math.floor(a);
+        const f = a - j;
+        const rim = (c: number) =>
+          face.getComponent(o + 1 + j, c) * (1 - f) + face.getComponent(o + 2 + j, c) * f;
+        px = face.getX(o) + (rim(0) - face.getX(o)) * rho;
+        py = face.getY(o) + (rim(1) - face.getY(o)) * rho;
+        pz = face.getZ(o) + (rim(2) - face.getZ(o)) * rho;
+        nx = faceNrm.getX(o);
+        ny = faceNrm.getY(o);
+        nz = faceNrm.getZ(o);
+      } else {
+        px = pos.getX(v);
+        py = pos.getY(v);
+        pz = pos.getZ(v);
+        nx = nrm.getX(v);
+        ny = nrm.getY(v);
+        nz = nrm.getZ(v);
+      }
       const tx = tangents[k * 3];
       const ty = tangents[k * 3 + 1];
       const tz = tangents[k * 3 + 2];
       // Sideways: across both the rope and the surface normal, for randomly angled fibres.
-      const bx = ny * tz - nz * ty;
-      const by = nz * tx - nx * tz;
-      const bz = nx * ty - ny * tx;
+      let bx = ny * tz - nz * ty;
+      let by = nz * tx - nx * tz;
+      let bz = nx * ty - ny * tx;
+      if (bx * bx + by * by + bz * bz < 0.04) {
+        // On a cut face the normal runs along the rope; splay against the table's up instead.
+        const l = Math.hypot(nz, nx) || 1;
+        bx = -nz / l;
+        by = 0;
+        bz = nx / l;
+      }
       // Out from the surface and leaning along the rope; the tip bends further over.
       const mx = px + (nx * rise + tx * lean + bx * side) * len * 0.5;
       const my = py + (ny * rise + ty * lean + by * side) * len * 0.5;

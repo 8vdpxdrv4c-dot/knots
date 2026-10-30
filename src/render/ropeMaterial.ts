@@ -128,6 +128,7 @@ export function createRopeMaterial(
 
   const material = new THREE.MeshPhysicalMaterial({
     color: 0xffffff, // the fibre tones live in the texture
+    side: THREE.DoubleSide, // nowhere on the rope may read as see-through, even cut ends seen up close
     vertexColors: true, // strand-groove occlusion baked per vertex by RopeMesh
     map: texture(colorData, true),
     normalMap: texture(normalData, false),
@@ -142,4 +143,75 @@ export function createRopeMaterial(
   });
   material.userData.fibreColor = new THREE.Color(color); // for loose fibres drawn by RopeMesh
   return material;
+}
+
+/**
+ * The cut end of one strand: a bundle of yarn ends packed together, each a small disc of fibre
+ * tips with a dark gap around it. Mapped flat across the strand's cut face by RopeMesh.
+ */
+export function createCutFaceTexture(color: THREE.ColorRepresentation): THREE.DataTexture {
+  const size = 512;
+  const tone = new THREE.Color(color).convertLinearToSRGB();
+  let seed = 3;
+  const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  // Yarns in a jittered hex pack filling the disc.
+  const yarns: [number, number, number, number][] = []; // x, y, radius, shade
+  const step = 0.075; // ~550 yarns per strand
+  const span = Math.ceil(1 / step);
+  for (let row = -span; row <= span; row++)
+    for (let col = -span; col <= span; col++) {
+      const x = (col + (row % 2) * 0.5) * step + (rand() - 0.5) * 0.4 * step;
+      const y = row * step * 0.866 + (rand() - 0.5) * 0.4 * step;
+      if (Math.hypot(x, y) < 0.9)
+        yarns.push([x, y, step * (0.6 + 0.13 * rand()), 0.6 + 0.2 * rand()]); // as dark as the rope's shaded sides, not brighter
+    }
+  // Bucket yarns on a grid one yarn wide, so each pixel only checks its neighbourhood.
+  const cells = Math.ceil(2 / step) + 2;
+  const cellOf = (v: number) => Math.min(cells - 1, Math.max(0, Math.floor((v + 1) / step)));
+  const grid: (typeof yarns)[] = Array.from({ length: cells * cells }, () => []);
+  for (const ya of yarns) grid[cellOf(ya[1]) * cells + cellOf(ya[0])].push(ya);
+  const data = new Uint8Array(size * size * 4);
+  for (let py = 0; py < size; py++)
+    for (let px = 0; px < size; px++) {
+      const x = (px / size) * 2 - 1;
+      const y = (py / size) * 2 - 1;
+      let best = Infinity;
+      let second = Infinity;
+      let yarn = yarns[0];
+      const gx = cellOf(x);
+      const gy = cellOf(y);
+      for (let cy = Math.max(0, gy - 2); cy <= Math.min(cells - 1, gy + 2); cy++)
+        for (let cx = Math.max(0, gx - 2); cx <= Math.min(cells - 1, gx + 2); cx++)
+          for (const ya of grid[cy * cells + cx]) {
+            const d = Math.hypot(x - ya[0], y - ya[1]) - ya[2];
+            if (d < best) {
+              second = best;
+              best = d;
+              yarn = ya;
+            } else if (d < second) second = d;
+          }
+      // Yarns are squeezed together: each pixel belongs to its nearest yarn, with a thin dark
+      // seam where two yarns meet and a darker gap outside the bundle.
+      const speckle = 0.82 + 0.3 * rand();
+      const seam = Math.min(1, (second - best) / (0.12 * step));
+      let v: number;
+      if (best > 0) v = 0.24 + 0.08 * rand();
+      else v = yarn[3] * speckle * (0.55 + 0.45 * seam);
+      data.set(
+        [
+          255 * Math.min(1, tone.r * v),
+          255 * Math.min(1, tone.g * v),
+          255 * Math.min(1, tone.b * v),
+          255,
+        ],
+        (py * size + px) * 4,
+      );
+    }
+  const tex = new THREE.DataTexture(data, size, size);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.generateMipmaps = true;
+  tex.needsUpdate = true;
+  return tex;
 }
