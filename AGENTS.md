@@ -2,6 +2,20 @@
 
 Vite + TypeScript + vanilla three.js app that animates knot tying. No UI framework, no physics library. The rope is simulated, not keyframed: invisible "guide" pins pull points of the rope along authored paths and physics does the rest (sagging, friction, collisions, cinching).
 
+## Start here: what are you changing?
+
+| Task | Read first | Don't need |
+| --- | --- | --- |
+| Add or tune a knot | `knots/types.ts`, `knots/overhand.ts` (template), `knots/index.ts` | sim, render |
+| Rope physics (stiffness, contact, friction, guides) | `sim/rope.ts`, `sim/rope.test.ts`, "Gotchas" below | render, ui |
+| Ropes, props or other engine features | "Multi-rope layout" below, `sim/rope.ts`, `sim/bake.ts`, `timeline.ts`, `main.ts` | ropeMesh internals |
+| How rope looks (strands, ends, shading, props, lights) | `render/ropeMesh.ts`, `render/ropeMaterial.ts`, `render/stage.ts` | sim |
+| Twist along the rope / normals | `sim/frames.ts`, strand-twist test in `knots/knots.test.ts` | rest of sim |
+| Player UI (buttons, scrubber, steps) | `ui/controls.ts`, `index.html`, `src/style.css`, `main.ts` | sim, render |
+| A failing knot test | `knots/knots.test.ts` (what each test asserts), then the knot's guides | render |
+
+Run `pnpm test` after anything in `sim/` or `knots/`; nothing else needs the long bake. Look at rendering changes in the browser (`pnpm dev`), since no test covers how it looks.
+
 ## Commands
 
 - `pnpm dev` – dev server (`.claude/launch.json` uses port 5173)
