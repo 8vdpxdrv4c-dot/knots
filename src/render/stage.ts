@@ -1,8 +1,26 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import type { Prop } from "../knots/types";
 
 const BACKGROUND = "#ece7de";
+
+/** A fixed prop, drawn from the same axis and radius the simulation collides with. */
+export function createPropMesh({ kind, a, b, radius }: Prop): THREE.Mesh {
+  const axis = new THREE.Vector3(...b).sub(new THREE.Vector3(...a));
+  const length = axis.length();
+  const mesh = new THREE.Mesh(
+    kind === "capsule"
+      ? new THREE.CapsuleGeometry(radius, length, 8, 24)
+      : new THREE.CylinderGeometry(radius, radius, length, 32),
+    new THREE.MeshStandardMaterial({ color: "#8a7458", roughness: 0.7 }),
+  );
+  mesh.position.set(...a).addScaledVector(axis, 0.5);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), axis.normalize());
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
 
 /** Renderer, camera and a softly lit table for the rope to lie on. */
 export function createStage(canvas: HTMLCanvasElement) {

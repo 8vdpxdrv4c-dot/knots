@@ -7,7 +7,10 @@ import { FPS, particleCount } from "./sim/rope";
  * watches; playback and scrubbing only ever read from here.
  */
 export class Timeline {
+  /** Particles in all ropes together. */
   readonly n: number;
+  /** Particles of each rope, in order; a frame holds the ropes one after another. */
+  readonly counts: number[];
   readonly duration: number;
   baked = 0;
   private readonly total: number;
@@ -16,7 +19,8 @@ export class Timeline {
   private readonly out = { positions: new Float32Array(0), normals: new Float32Array(0) };
 
   constructor(knot: KnotDef, onProgress: () => void) {
-    this.n = particleCount(knot.rope);
+    this.counts = knot.ropes.map(particleCount);
+    this.n = this.counts.reduce((a, b) => a + b, 0);
     this.total = frameCount(knot);
     this.duration = (this.total - 1) / FPS;
     this.frames = new Float32Array(this.total * this.n * 3);

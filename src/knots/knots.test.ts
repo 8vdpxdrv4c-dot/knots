@@ -4,11 +4,11 @@ import { particleCount } from "../sim/rope";
 import { knots } from ".";
 
 describe.each(knots)("$name", (knot) => {
-  const n = particleCount(knot.rope);
+  const n = particleCount(knot.ropes[0]);
   const total = frameCount(knot);
   const all = new Float32Array(total * n * 3);
   bake(knot, (c) => all.set(c.frames, c.start * n * 3));
-  const spacing = knot.rope.length / (n - 1);
+  const spacing = knot.ropes[0].length / (n - 1);
   const endDistance = (f: number) => {
     const a = f * n * 3;
     const b = a + (n - 1) * 3;
@@ -26,7 +26,7 @@ describe.each(knots)("$name", (knot) => {
           all[a + i * 3 + 1] - all[a + j * 3 + 1],
           all[a + i * 3 + 2] - all[a + j * 3 + 2],
         );
-        if (d < 2.6 * knot.rope.radius) {
+        if (d < 2.6 * knot.ropes[0].radius) {
           lo = Math.min(lo, i);
           hi = Math.max(hi, j);
         }
@@ -52,7 +52,7 @@ describe.each(knots)("$name", (knot) => {
     // An untied rope pulled from both ends straightens to nearly its full length.
     let widest = 0;
     for (let f = Math.floor(total * 0.6); f < total; f++) widest = Math.max(widest, endDistance(f));
-    expect(widest).toBeLessThan(0.9 * knot.rope.length);
+    expect(widest).toBeLessThan(0.9 * knot.ropes[0].length);
   });
 
   test("cinches: little rope is left inside the knot at the end", () => {
@@ -60,7 +60,7 @@ describe.each(knots)("$name", (knot) => {
     const [lo, hi] = knotRange(total - 1);
     expect(hi).toBeGreaterThan(lo);
     // A loose knot with an open eye keeps about 0.4 of the rope in it; a cinched one about 0.28.
-    expect((hi - lo) * spacing).toBeLessThan(0.32 * knot.rope.length);
+    expect((hi - lo) * spacing).toBeLessThan(0.32 * knot.ropes[0].length);
   });
 
   test("the knot stays where it was tied while it is pulled tight", () => {
@@ -78,7 +78,7 @@ describe.each(knots)("$name", (knot) => {
     };
     const [x0, z0] = centre(Math.floor(total * 0.6));
     const [x1, z1] = centre(total - 1);
-    expect(Math.hypot(x1 - x0, z1 - z0)).toBeLessThan(6 * knot.rope.radius);
+    expect(Math.hypot(x1 - x0, z1 - z0)).toBeLessThan(6 * knot.ropes[0].radius);
   });
 
   test("rope never passes through rope, even under the hardest pull", () => {
@@ -94,7 +94,7 @@ describe.each(knots)("$name", (knot) => {
           );
         }
     // Contact keeps centres a diameter (2r) apart; well under that means one strand went through another.
-    expect(closest).toBeGreaterThan(1.5 * knot.rope.radius);
+    expect(closest).toBeGreaterThan(1.5 * knot.ropes[0].radius);
   });
 
   test("steps are in time order and inside the timeline", () => {
@@ -106,7 +106,7 @@ describe.each(knots)("$name", (knot) => {
 
 describe.each(knots)("$name strand twist", (knot) => {
   test("material normals stay square to the rope and twist smoothly along it", () => {
-    const n = particleCount(knot.rope);
+    const n = particleCount(knot.ropes[0]);
     let worstDot = 0;
     let worstTwist = 0;
     let worstSmoothTwist = 0;

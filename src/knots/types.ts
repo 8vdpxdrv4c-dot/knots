@@ -11,6 +11,8 @@ export interface GuideKey {
  * the rope sags, drags on the table, collides with itself and cinches.
  */
 export interface Guide {
+  /** Index into `KnotDef.ropes`. Leave it out for the first rope. */
+  rope?: number;
   /** Where on the rope: 0 is the standing end, 1 is the working end. */
   at: number;
   /** Seconds. The guide grabs the rope wherever it is at this moment. */
@@ -23,6 +25,25 @@ export interface Guide {
   force?: number;
 }
 
+export interface RopeDef {
+  length: number;
+  radius: number;
+  /**
+   * Where the rope starts, as a polyline from its standing end. It should be as long as `length`
+   * and rest on the table (y = radius) or hang in the air to drop; a straight line is the usual start.
+   */
+  start: Vec3[];
+}
+
+/** A fixed object for rope to tie around: a pole, ring segment or rail. Never moves. */
+export interface Prop {
+  /** A capsule is the axis `a`→`b` swept by `radius` with round ends; a cylinder has flat ends. */
+  kind: "capsule" | "cylinder";
+  a: Vec3;
+  b: Vec3;
+  radius: number;
+}
+
 export interface Step {
   t: number;
   title: string;
@@ -30,13 +51,14 @@ export interface Step {
 
 /**
  * Everything that makes one knot. Adding a knot means adding one of these;
- * the rope starts straight along the x axis, lying on the table at y = 0.
+ * ropes start along their `start` polylines and the table is at y = 0.
  */
 export interface KnotDef {
   id: string;
   name: string;
   summary: string;
-  rope: { length: number; radius: number };
+  ropes: RopeDef[];
+  props?: Prop[];
   duration: number;
   steps: Step[];
   guides: Guide[];

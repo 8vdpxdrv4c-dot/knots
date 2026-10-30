@@ -1,4 +1,4 @@
-import type { Guide, KnotDef, Vec3 } from "../knots/types";
+import type { Guide, KnotDef, Prop, RopeDef, Vec3 } from "../knots/types";
 
 /** Frames per second of the baked timeline. */
 export const FPS = 60;
@@ -23,7 +23,7 @@ const RELEASE = 0.3; // seconds a guide takes to let go
 const GUIDE_MAX_FORCE = 10; // N: enough to lift stiff rope, not to drag it across the table
 
 /** Particles along the rope. Spacing below the radius leaves no gap for other rope to slip through. */
-export function particleCount(rope: KnotDef["rope"]): number {
+export function particleCount(rope: RopeDef): number {
   return Math.ceil(rope.length / (0.8 * rope.radius)) + 1;
 }
 
@@ -36,16 +36,26 @@ interface GuideState {
   handsOff: boolean; // another guide takes this point when this one ends, so keep a firm grip
 }
 
+interface PropState extends Pick<Prop, "kind" | "a" | "radius"> {
+  u: Vec3; // unit axis
+  len: number;
+}
+
 /**
  * Rope as a Cosserat rod solved with small-step XPBD: particles joined by segments that each
  * carry an orientation, so bending and twist are real torques between segments (position-based
  * Cosserat rods, Kugelstadt & Schömer 2016). Plus self-collision with Coulomb friction and a
  * table with friction. Deterministic.
+ *
+ * Several ropes share the particle and segment arrays, one after another. A segment j joins
+ * particles j and j+1, unless `end[j]` marks j as the last of its rope: a break, which no
+ * stretch, bend, length or collision-skip rule crosses. Props are fixed capsules and cylinders.
  */
 export class RopeSim {
+  /** Particles in all ropes together. */
   readonly n: number;
-  readonly radius: number;
-  readonly spacing: number;
+  /** Where each rope's particles sit in `x`. */
+  readonly ropes: { start: number; count: number }[] = [];
   readonly x: Float64Array;
   time = 0;
   private flip = false;
@@ -63,42 +73,70 @@ export class RopeSim {
   private readonly q: Float64Array;
   private readonly qPrev: Float64Array;
   private readonly om: Float64Array; // segment angular velocity, body frame
-  private readonly invMass: number;
-  private readonly skip: number;
+  private readonly radii: Float64Array; // per particle
+  private readonly spacings: Float64Array; // per segment
+  private readonly rope: Int32Array; // per particle: which rope
+  private readonly end: Uint8Array; // per particle: 1 if last of its rope
+  private readonly skips: number[]; // per rope
+  private readonly props: PropState[];
   private readonly guides: GuideState[];
 
   constructor(knot: KnotDef) {
-    const { length, radius } = knot.rope;
-    this.n = particleCount(knot.rope);
-    this.radius = radius;
-    this.spacing = length / (this.n - 1);
-    // Particles closer than a diameter along the rope always touch, so they never collide.
-    this.skip = Math.ceil((2 * radius) / this.spacing);
-    this.invMass = this.n / ROPE_MASS;
-    this.x = new Float64Array(this.n * 3);
-    for (let i = 0; i < this.n; i++) {
-      this.x[i * 3] = -length / 2 + i * this.spacing;
-      this.x[i * 3 + 1] = radius;
-    }
+    const counts = knot.ropes.map(particleCount);
+    const n = (this.n = counts.reduce((sum, c) => sum + c, 0));
+    this.x = new Float64Array(n * 3);
+    this.w = new Float64Array(n);
+    this.radii = new Float64Array(n);
+    this.spacings = new Float64Array(n);
+    this.rope = new Int32Array(n);
+    this.end = new Uint8Array(n);
+    this.q = new Float64Array((n - 1) * 4);
+    for (let j = 0; j < n - 1; j++) this.q[j * 4 + 3] = 1;
+    this.skips = [];
+    let start = 0;
+    knot.ropes.forEach((def, k) => {
+      const count = counts[k];
+      const spacing = def.length / (count - 1);
+      // Particles closer than a diameter along the rope always touch, so they never collide.
+      this.skips.push(Math.ceil((2 * def.radius) / spacing));
+      this.ropes.push({ start, count });
+      const pts = layOut(def, count);
+      for (let i = 0; i < count; i++) {
+        const p = start + i;
+        this.x.set(pts[i], p * 3);
+        this.w[p] = count / ROPE_MASS;
+        this.radii[p] = def.radius;
+        this.spacings[p] = spacing;
+        this.rope[p] = k;
+        if (i === count - 1) this.end[p] = 1;
+        else turnZ(this.q, p * 4, pts[i], pts[i + 1]);
+      }
+      start += count;
+    });
     this.prev = this.x.slice();
-    this.v = new Float64Array(this.n * 3);
-    this.w = new Float64Array(this.n).fill(this.invMass);
+    this.v = new Float64Array(n * 3);
     this.wHeld = this.w.slice();
-    this.dir = new Float64Array((this.n - 1) * 3);
-    this.rhs = new Float64Array(this.n - 1);
-    this.cp = new Float64Array(this.n - 1);
-    this.lam = new Float64Array(this.n - 1);
-    // Quarter turn about y takes local z onto the rope's +x.
-    this.q = new Float64Array((this.n - 1) * 4);
-    for (let j = 0; j < this.n - 1; j++) {
-      this.q[j * 4 + 1] = Math.SQRT1_2;
-      this.q[j * 4 + 3] = Math.SQRT1_2;
-    }
+    this.dir = new Float64Array((n - 1) * 3);
+    this.rhs = new Float64Array(n - 1);
+    this.cp = new Float64Array(n - 1);
+    this.lam = new Float64Array(n - 1);
     this.qPrev = this.q.slice();
-    this.om = new Float64Array((this.n - 1) * 3);
+    this.om = new Float64Array((n - 1) * 3);
+    this.props = (knot.props ?? []).map(({ kind, a, b, radius }) => {
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+      return {
+        kind,
+        a,
+        radius,
+        len,
+        u: [(b[0] - a[0]) / len, (b[1] - a[1]) / len, (b[2] - a[2]) / len],
+      };
+    });
     this.guides = knot.guides.map((def) => ({
       def,
-      index: Math.round(def.at * (this.n - 1)),
+      index:
+        this.ropes[def.rope ?? 0].start +
+        Math.round(def.at * (this.ropes[def.rope ?? 0].count - 1)),
       times: [def.grab, ...def.path.map((k) => k.t)],
       points: null,
       target: null,
@@ -158,6 +196,7 @@ export class RopeSim {
       this.solveCollisions();
     }
     this.solveGround();
+    this.solveProps();
 
     for (let i = 0; i < n * 3; i++) v[i] = (x[i] - prev[i]) / H;
     for (let j = 0; j < n - 1; j++) {
@@ -168,12 +207,16 @@ export class RopeSim {
       om[j * 3 + 1] = r[1] * sgn;
       om[j * 3 + 2] = r[2] * sgn;
     }
-    for (let i = 3; i < n * 3 - 3; i++)
-      v[i] += INTERNAL_DAMPING * ((v[i - 3] + v[i + 3]) / 2 - v[i]);
+    for (let p = 1; p < n - 1; p++) {
+      if (this.end[p] || this.end[p - 1]) continue; // a rope's own end has no neighbour on one side
+      for (let i = p * 3; i < p * 3 + 3; i++)
+        v[i] += INTERNAL_DAMPING * ((v[i - 3] + v[i + 3]) / 2 - v[i]);
+    }
   }
 
   /** Bending and twist between segments j and j+1: drives their relative rotation to zero. */
   private solveBendTwist(j: number): void {
+    if (this.end[j] || this.end[j + 1]) return;
     const { q } = this;
     const a = j * 4;
     const b = a + 4;
@@ -181,7 +224,7 @@ export class RopeSim {
     const sgn = r[3] < 0 ? -1 : 1;
     // Energy EI/2·κ²·ds with Ω = κ·ds/2 gives compliance ds / (4·EI) on Ω. Rotating either
     // segment by θ moves Ω by θ/2, so each counts as inverse mass 1 / (4·I).
-    const ds = this.spacing;
+    const ds = this.spacings[j];
     const wsum = 2 / (4 * SEG_INERTIA);
     const bend = ds / (4 * BEND_STIFFNESS) / (H * H);
     const twist = ds / (4 * TWIST_STIFFNESS) / (H * H);
@@ -197,6 +240,7 @@ export class RopeSim {
 
   /** Keeps segment j's orientation pointing along the rope, which carries bending onto the particles. */
   private solveStretchShear(j: number): void {
+    if (this.end[j]) return;
     const { x, w, q } = this;
     const pa = j * 3;
     const pb = pa + 3;
@@ -206,7 +250,7 @@ export class RopeSim {
     const d0 = 2 * (qx * qz + qw * qy);
     const d1 = 2 * (qy * qz - qw * qx);
     const d2 = qw * qw - qx * qx - qy * qy + qz * qz;
-    const ds = this.spacing;
+    const ds = this.spacings[j];
     const g0 = (x[pb] - x[pa]) / ds - d0;
     const g1 = (x[pb + 1] - x[pa + 1]) / ds - d1;
     const g2 = (x[pb + 2] - x[pa + 2]) / ds - d2;
@@ -282,7 +326,7 @@ export class RopeSim {
    * cannot fall behind, so even a hard pull leaves the rope its length (after Deul et al. 2018).
    */
   private solveLengths(): void {
-    const { n, x, wHeld: w, dir, rhs, cp, lam, spacing } = this;
+    const { n, x, wHeld: w, dir, rhs, cp, lam, spacings, end } = this;
     const m = n - 1;
     for (let i = 0; i < m; i++) {
       const a = i * 3;
@@ -293,7 +337,7 @@ export class RopeSim {
       dir[a] = dx / d;
       dir[a + 1] = dy / d;
       dir[a + 2] = dz / d;
-      rhs[i] = spacing - d;
+      rhs[i] = end[i] ? 0 : spacings[i] - d; // no link across a break
     }
     // Forward sweep. Diagonal w_i + w_i+1; links i and i+1 share particle i+1.
     let prevC = 0;
@@ -301,12 +345,12 @@ export class RopeSim {
     for (let i = 0; i < m; i++) {
       const a = i * 3;
       const off =
-        i > 0
+        i > 0 && !end[i - 1] && !end[i]
           ? -w[i] * (dir[a] * dir[a - 3] + dir[a + 1] * dir[a - 2] + dir[a + 2] * dir[a - 1])
           : 0;
       const den = w[i] + w[i + 1] - off * prevC;
       const up =
-        i < m - 1
+        i < m - 1 && !end[i] && !end[i + 1]
           ? -w[i + 1] * (dir[a] * dir[a + 3] + dir[a + 1] * dir[a + 4] + dir[a + 2] * dir[a + 5])
           : 0;
       prevC = cp[i] = up / den;
@@ -325,12 +369,13 @@ export class RopeSim {
   }
 
   private solveCollisions(): void {
-    const { n, x, prev, w, skip } = this;
-    const minD = 2 * this.radius;
+    const { n, x, prev, w, radii, rope, skips } = this;
     // shortcut: O(n²) pair test, fine for ~150 particles; add a spatial hash for much longer ropes.
     for (let a = 0; a < n; a++) {
       const ia = a * 3;
-      for (let b = a + skip; b < n; b++) {
+      for (let b = a + 1; b < n; b++) {
+        if (rope[a] === rope[b] && b - a < skips[rope[a]]) continue;
+        const minD = radii[a] + radii[b];
         const ib = b * 3;
         const dx = x[ia] - x[ib];
         const dy = x[ia + 1] - x[ib + 1];
@@ -373,9 +418,10 @@ export class RopeSim {
   }
 
   private solveGround(): void {
-    const { n, x, prev, radius } = this;
+    const { n, x, prev, radii } = this;
     for (let a = 0; a < n; a++) {
       const i = a * 3;
+      const radius = radii[a];
       if (x[i + 1] >= radius) continue;
       const pen = radius - x[i + 1];
       x[i + 1] = radius;
@@ -386,12 +432,95 @@ export class RopeSim {
       x[i + 2] -= rz * f;
     }
   }
+
+  /** Pushes rope out of the props and lets friction hold it, as the table does. */
+  private solveProps(): void {
+    const { n, x, prev, radii } = this;
+    for (const { kind, a, u, len, radius } of this.props) {
+      for (let p = 0; p < n; p++) {
+        const i = p * 3;
+        const px = x[i] - a[0];
+        const py = x[i + 1] - a[1];
+        const pz = x[i + 2] - a[2];
+        const t = px * u[0] + py * u[1] + pz * u[2];
+        const s = Math.min(Math.max(t, 0), len);
+        // Closest point of the prop's core: on the axis for a capsule (which then gets the radius
+        // as its gap), the solid itself for a cylinder.
+        let cx = s * u[0];
+        let cy = s * u[1];
+        let cz = s * u[2];
+        let gap = radii[p];
+        if (kind === "capsule") gap += radius;
+        else {
+          const rx = px - t * u[0];
+          const ry = py - t * u[1];
+          const rz = pz - t * u[2];
+          const k = Math.min(1, radius / Math.hypot(rx, ry, rz));
+          cx += rx * k;
+          cy += ry * k;
+          cz += rz * k;
+        }
+        const ox = px - cx;
+        const oy = py - cy;
+        const oz = pz - cz;
+        const d = Math.hypot(ox, oy, oz);
+        // shortcut: a particle exactly on the core has no push direction and is left alone.
+        if (d >= gap || d === 0) continue;
+        const pen = gap - d;
+        const nx = ox / d;
+        const ny = oy / d;
+        const nz = oz / d;
+        x[i] += nx * pen;
+        x[i + 1] += ny * pen;
+        x[i + 2] += nz * pen;
+        let sx = x[i] - prev[i];
+        let sy = x[i + 1] - prev[i + 1];
+        let sz = x[i + 2] - prev[i + 2];
+        const sn = sx * nx + sy * ny + sz * nz;
+        sx -= sn * nx;
+        sy -= sn * ny;
+        sz -= sn * nz;
+        const f = frictionFactor(Math.hypot(sx, sy, sz), pen);
+        x[i] -= sx * f;
+        x[i + 1] -= sy * f;
+        x[i + 2] -= sz * f;
+      }
+    }
+  }
 }
 
 /** Fraction of tangential slide to cancel, given how hard the contact pushed. */
 function frictionFactor(slide: number, push: number): number {
   if (slide === 0) return 0;
   return Math.min(1, (FRICTION * push) / slide);
+}
+
+/** Evenly spaced points along the rope's start polyline. */
+function layOut(rope: RopeDef, count: number): Vec3[] {
+  const { start } = rope;
+  const lens = start.slice(1).map((b, k) => Math.hypot(...b.map((c, i) => c - start[k][i])));
+  if (Math.abs(lens.reduce((a, b) => a + b, 0) - rope.length) > 0.01 * rope.length)
+    throw new Error("a rope's start polyline must be as long as the rope");
+  const spacing = rope.length / (count - 1);
+  let k = 0;
+  let s0 = 0;
+  return Array.from({ length: count }, (_, i) => {
+    const s = i * spacing;
+    while (k < lens.length - 1 && s > s0 + lens[k]) s0 += lens[k++];
+    const [a, b] = [start[k], start[k + 1]];
+    return a.map((c, j) => c + ((b[j] - c) / lens[k]) * (s - s0)) as Vec3;
+  });
+}
+
+/** Writes into q[o] the shortest rotation taking local z onto the direction from a to b. */
+function turnZ(q: Float64Array, o: number, a: Vec3, b: Vec3): void {
+  const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const l = Math.hypot(...d);
+  const dz = d[2] / l;
+  // z × d, with the half-angle w; straight against z, any turn about x will do.
+  [q[o], q[o + 1], q[o + 2], q[o + 3]] =
+    dz < -1 + 1e-9 ? [1, 0, 0, 0] : [-d[1] / l, d[0] / l, 0, 1 + dz];
+  normalize(q, o);
 }
 
 /** Smooth path through keys: starts and ends at rest, and stops dead on repeated points (holds). */

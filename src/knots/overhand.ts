@@ -9,7 +9,16 @@ export const overhand: KnotDef = {
   name: "Overhand knot",
   summary:
     "The simplest knot and the base of many others. Use it as a stopper at the end of a rope.",
-  rope: { length: 1.2, radius: R },
+  ropes: [
+    {
+      length: 1.2,
+      radius: R,
+      start: [
+        [-0.6, R, 0],
+        [0.6, R, 0],
+      ],
+    },
+  ],
   duration: 7.2,
   steps: [
     { t: 0, title: "Lay the rope out straight" },
