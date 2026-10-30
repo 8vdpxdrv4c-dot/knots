@@ -1,0 +1,56 @@
+import type { KnotDef } from "./knots/types";
+import { frameCount, type BakeChunk } from "./sim/bake";
+import { FPS, particleCount } from "./sim/rope";
+
+/**
+ * Baked frames of one knot. The simulation fills it from a worker while the user
+ * watches; playback and scrubbing only ever read from here.
+ */
+export class Timeline {
+  readonly n: number;
+  readonly duration: number;
+  baked = 0;
+  private readonly total: number;
+  private readonly frames: Float32Array;
+  private readonly normals: Float32Array;
+  private readonly out = { positions: new Float32Array(0), normals: new Float32Array(0) };
+
+  constructor(knot: KnotDef, onProgress: () => void) {
+    this.n = particleCount(knot.rope);
+    this.total = frameCount(knot);
+    this.duration = (this.total - 1) / FPS;
+    this.frames = new Float32Array(this.total * this.n * 3);
+    this.normals = new Float32Array(this.total * this.n * 3);
+    this.out = { positions: new Float32Array(this.n * 3), normals: new Float32Array(this.n * 3) };
+    const worker = new Worker(new URL("./sim/worker.ts", import.meta.url), { type: "module" });
+    worker.onmessage = (e: MessageEvent<BakeChunk>) => {
+      const { start, frames, normals } = e.data;
+      this.frames.set(frames, start * this.n * 3);
+      this.normals.set(normals, start * this.n * 3);
+      this.baked = start + frames.length / (this.n * 3);
+      if (this.baked >= this.total) worker.terminate();
+      onProgress();
+    };
+    worker.postMessage(knot);
+  }
+
+  /** Seconds that are ready to play. */
+  get ready(): number {
+    return Math.max(0, (this.baked - 1) / FPS);
+  }
+
+  /** Rope positions and material normals at `time`, blended between frames so slow motion stays smooth. */
+  sample(time: number): { positions: Float32Array; normals: Float32Array } {
+    const stride = this.n * 3;
+    const f = Math.min(Math.max(time, 0), this.ready) * FPS;
+    const i = Math.floor(f);
+    const j = Math.min(i + 1, this.baked - 1);
+    const a = f - i;
+    const { frames, normals, out } = this;
+    for (let k = 0; k < stride; k++) {
+      out.positions[k] = frames[i * stride + k] * (1 - a) + frames[j * stride + k] * a;
+      out.normals[k] = normals[i * stride + k] * (1 - a) + normals[j * stride + k] * a;
+    }
+    return out;
+  }
+}

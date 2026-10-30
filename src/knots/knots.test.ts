@@ -1,0 +1,98 @@
+import { describe, expect, test } from "vitest";
+import { bake, frameCount } from "../sim/bake";
+import { particleCount } from "../sim/rope";
+import { knots } from ".";
+
+describe.each(knots)("$name", (knot) => {
+  const n = particleCount(knot.rope);
+  const total = frameCount(knot);
+  const all = new Float32Array(total * n * 3);
+  bake(knot, (c) => all.set(c.frames, c.start * n * 3));
+  const spacing = knot.rope.length / (n - 1);
+  const endDistance = (f: number) => {
+    const a = f * n * 3;
+    const b = a + (n - 1) * 3;
+    return Math.hypot(all[a] - all[b], all[a + 1] - all[b + 1], all[a + 2] - all[b + 2]);
+  };
+
+  test("stays finite and never overstretches", () => {
+    expect(all.every(Number.isFinite)).toBe(true);
+    let worst = 0;
+    for (let f = 0; f < total; f++)
+      for (let i = 0; i < n - 1; i++) {
+        const a = f * n * 3 + i * 3;
+        worst = Math.max(
+          worst,
+          Math.hypot(all[a] - all[a + 3], all[a + 1] - all[a + 4], all[a + 2] - all[a + 5]),
+        );
+      }
+    expect(worst / spacing).toBeLessThan(1.5);
+  });
+
+  test("ties: pulled ends stay well short of the rope length", () => {
+    // An untied rope pulled from both ends straightens to nearly its full length.
+    let widest = 0;
+    for (let f = Math.floor(total * 0.6); f < total; f++) widest = Math.max(widest, endDistance(f));
+    expect(widest).toBeLessThan(0.9 * knot.rope.length);
+  });
+
+  test("steps are in time order and inside the timeline", () => {
+    const ts = knot.steps.map((s) => s.t);
+    expect(ts).toEqual([...ts].sort((a, b) => a - b));
+    expect(ts.every((t) => t >= 0 && t <= knot.duration)).toBe(true);
+  });
+});
+
+describe.each(knots)("$name strand twist", (knot) => {
+  test("material normals stay square to the rope and twist smoothly along it", () => {
+    const n = particleCount(knot.rope);
+    let worstDot = 0;
+    let worstTwist = 0;
+    let worstSmoothTwist = 0;
+    bake(knot, ({ frames, normals }) => {
+      const tangent = (o: number) => {
+        const a = Math.max(o - 3, 0);
+        const b = Math.min(o + 3, frames.length - 3);
+        const v = [0, 1, 2].map((c) => frames[b + c] - frames[a + c]);
+        const l = Math.hypot(...v);
+        return v.map((x) => x / l);
+      };
+      for (let f = 0; f < frames.length / (n * 3); f++)
+        for (let i = 2; i < n - 1; i++) {
+          const o = f * n * 3 + i * 3;
+          const t = tangent(o);
+          const tp = tangent(o - 3);
+          const nn = [normals[o], normals[o + 1], normals[o + 2]];
+          worstDot = Math.max(worstDot, Math.abs(t[0] * nn[0] + t[1] * nn[1] + t[2] * nn[2]));
+          // Turn the previous normal by the bend (tp -> t); what angle is left is twist.
+          const ax = [
+            tp[1] * t[2] - tp[2] * t[1],
+            tp[2] * t[0] - tp[0] * t[2],
+            tp[0] * t[1] - tp[1] * t[0],
+          ];
+          const sin = Math.hypot(...ax);
+          const cos = tp[0] * t[0] + tp[1] * t[1] + tp[2] * t[2];
+          let p = [normals[o - 3], normals[o - 2], normals[o - 1]];
+          if (sin > 1e-9) {
+            const k = ax.map((x) => x / sin);
+            const kd = (k[0] * p[0] + k[1] * p[1] + k[2] * p[2]) * (1 - cos);
+            const kp = [
+              k[1] * p[2] - k[2] * p[1],
+              k[2] * p[0] - k[0] * p[2],
+              k[0] * p[1] - k[1] * p[0],
+            ];
+            p = p.map((x, j) => x * cos + kp[j] * sin + k[j] * kd);
+          }
+          const c = p[0] * nn[0] + p[1] * nn[1] + p[2] * nn[2];
+          const twist = Math.acos(Math.min(1, Math.max(-1, c)));
+          worstTwist = Math.max(worstTwist, twist);
+          // Sharp pinches under a guide (> 15° per segment) are exempt from the tight limit.
+          if (cos > Math.cos(Math.PI / 12)) worstSmoothTwist = Math.max(worstSmoothTwist, twist);
+        }
+    });
+    expect(worstDot).toBeLessThan(0.05);
+    // Neighbouring particles twist less than 10° apart, so strands never look loosened.
+    expect(worstSmoothTwist).toBeLessThan(Math.PI / 18);
+    expect(worstTwist).toBeLessThan(Math.PI / 6);
+  });
+});
