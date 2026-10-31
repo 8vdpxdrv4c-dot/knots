@@ -50,7 +50,7 @@ export const zeppelin: KnotDef = {
     "Joins two ropes securely. It holds under heavy load and still unties easily afterwards.",
   ropes: [
     { length: BLUE, radius: R, color: "#2f5fb3", start: blueStart },
-    { length: RED, radius: R, color: "#c8433a", start: redStart },
+    { length: RED, radius: R, start: redStart },
   ],
   duration: 11.7,
   // Each move starts while the one before it finishes, so the hands never all stand still.
