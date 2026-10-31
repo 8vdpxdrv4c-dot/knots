@@ -1,6 +1,6 @@
 import type { KnotDef } from "./knots/types";
 import { frameCount, type BakeChunk } from "./sim/bake";
-import { FPS, particleCount } from "./sim/rope";
+import { DEFAULT_PHYSICS, FPS, particleCount, type RopePhysics } from "./sim/rope";
 
 /**
  * Baked frames of one knot. The simulation fills it from a worker while the user
@@ -17,8 +17,9 @@ export class Timeline {
   private readonly frames: Float32Array;
   private readonly normals: Float32Array;
   private readonly out = { positions: new Float32Array(0), normals: new Float32Array(0) };
+  private readonly worker: Worker;
 
-  constructor(knot: KnotDef, onProgress: () => void) {
+  constructor(knot: KnotDef, onProgress: () => void, physics: RopePhysics = DEFAULT_PHYSICS) {
     this.counts = knot.ropes.map(particleCount);
     this.n = this.counts.reduce((a, b) => a + b, 0);
     this.total = frameCount(knot);
@@ -26,7 +27,9 @@ export class Timeline {
     this.frames = new Float32Array(this.total * this.n * 3);
     this.normals = new Float32Array(this.total * this.n * 3);
     this.out = { positions: new Float32Array(this.n * 3), normals: new Float32Array(this.n * 3) };
-    const worker = new Worker(new URL("./sim/worker.ts", import.meta.url), { type: "module" });
+    const worker = (this.worker = new Worker(new URL("./sim/worker.ts", import.meta.url), {
+      type: "module",
+    }));
     worker.onmessage = (e: MessageEvent<BakeChunk>) => {
       const { start, frames, normals } = e.data;
       this.frames.set(frames, start * this.n * 3);
@@ -35,7 +38,12 @@ export class Timeline {
       if (this.baked >= this.total) worker.terminate();
       onProgress();
     };
-    worker.postMessage(knot);
+    worker.postMessage({ knot, physics });
+  }
+
+  /** Stops baking; for a timeline that is being replaced. */
+  dispose(): void {
+    this.worker.terminate();
   }
 
   /** Seconds that are ready to play. */

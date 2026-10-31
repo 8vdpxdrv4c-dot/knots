@@ -50,6 +50,7 @@ Frames are baked in a Web Worker while the user watches; playback waits at the e
 - `src/timeline.ts` – main-thread frame store, `counts` per rope, `sample(time)`.
 - `src/render/ropeMesh.ts` – three-strand laid-rope geometry rebuilt around the centreline every frame, plus cut ends/sleeves. `ropeMaterial.ts` – rope material and textures. `stage.ts` – renderer, camera, lights, table, and `createPropMesh`.
 - `src/ui/controls.ts` – DOM controls; `index.html` + `src/style.css` hold the markup/styles.
+- `src/ui/tune.ts` – material playground: open the app with `?tune` for sliders over `DEFAULT_PHYSICS` (in `rope.ts`) that re-bake the knot on change; the URL keeps the values (`&bend=0.01&mass=2.2`).
 
 ### Multi-rope layout (important when touching the sim)
 
@@ -75,7 +76,7 @@ Guides are hands. A natural move grabs one point and lets physics carry the rest
 
 ## Gotchas
 
-- Physics constants in `rope.ts` were tuned with metrics sweeps; change them deliberately and re-run the full tests. The existing overhand must keep baking bit-identically unless a change is intended.
+- Physics constants in `rope.ts` were tuned with metrics sweeps; the rope material (`DEFAULT_PHYSICS`) is picked by eye in the `?tune` playground; change them deliberately and re-run the full tests. The existing overhand must keep baking bit-identically unless a change is intended.
 - Rope-vs-prop and rope-vs-rope no-pass-through tests live in `src/sim/rope.test.ts` (a test knot with two ropes and a pole). `RopeMesh` contact shading only considers its own rope.
 - `RopeDef.start` must be about as long as `length` (the constructor throws otherwise).
 - Collision is an O(n²) pair test: fine for a few hundred particles, add a spatial hash for much more.

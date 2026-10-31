@@ -1,6 +1,6 @@
 import type { KnotDef } from "../knots/types";
 import { MaterialFrames } from "./frames";
-import { FPS, RopeSim } from "./rope";
+import { DEFAULT_PHYSICS, FPS, RopeSim, type RopePhysics } from "./rope";
 
 export interface BakeChunk {
   start: number;
@@ -14,8 +14,13 @@ export function frameCount(knot: KnotDef): number {
 }
 
 /** Runs the whole knot and hands back positions and normals in chunks of frames (n * 3 floats each). */
-export function bake(knot: KnotDef, onChunk: (chunk: BakeChunk) => void, chunkSize = 30): void {
-  const sim = new RopeSim(knot);
+export function bake(
+  knot: KnotDef,
+  onChunk: (chunk: BakeChunk) => void,
+  chunkSize = 30,
+  physics: RopePhysics = DEFAULT_PHYSICS,
+): void {
+  const sim = new RopeSim(knot, physics);
   const materials = sim.ropes.map((r) => new MaterialFrames(r.count));
   const total = frameCount(knot);
   const stride = sim.n * 3;

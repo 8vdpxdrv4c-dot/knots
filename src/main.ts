@@ -6,15 +6,17 @@ import { createPropMesh, createStage } from "./render/stage";
 import { Timeline } from "./timeline";
 import { createPicker } from "./ui/picker";
 import { createControls, type PlayerState } from "./ui/controls";
+import { createTuner, physicsFromUrl } from "./ui/tune";
 
 const LOOP_REST = 1.2; // seconds to show the finished knot before looping
 
 const knot =
   knots.find((k) => k.id === new URLSearchParams(location.search).get("knot")) ?? knots[0];
 const stage = createStage(document.getElementById("scene") as HTMLCanvasElement);
-const timeline = new Timeline(knot, () => {
+const onProgress = () => {
   if (timeline.ready >= timeline.duration) document.body.dataset.baked = "true";
-});
+};
+let timeline = new Timeline(knot, onProgress, physicsFromUrl());
 const ropeMaterial = createRopeMaterial("#c39f6a", stage.renderer.capabilities.getMaxAnisotropy());
 const ropes = knot.ropes.map((def, k) => {
   const mesh = new RopeMesh(timeline.counts[k], def, ropeMaterial);
@@ -49,6 +51,14 @@ const draw = createControls(knot, timeline.duration, {
 });
 
 createPicker(knots, knot.id);
+createTuner((physics) => {
+  // Same knot, so the rope meshes and frame counts stay; only the baked frames are replaced.
+  timeline.dispose();
+  delete document.body.dataset.baked;
+  timeline = new Timeline(knot, onProgress, physics);
+  state.time = 0;
+  state.playing = true;
+});
 
 const clock = new THREE.Timer();
 stage.renderer.setAnimationLoop((now) => {

@@ -5,22 +5,45 @@ export const FPS = 60;
 const SUBSTEPS = 24;
 const H = 1 / (FPS * SUBSTEPS);
 const GRAVITY = 9.81;
-const ROPE_MASS = 1.0; // kg: heavier than real laid rope, which reads as light on screen
-const BEND_STIFFNESS = 0.03; // N·m²
 const CONTACT_ROUNDS = 4; // fewer lets a hard pull drag rope through rope inside the knot
-const TWIST_STIFFNESS = 0.022; // N·m²: about 0.75 EI, as for a solid rod; the lay makes it softer still
 // Rotary inertia of each segment, inflated past the real m·r²/4: the real value makes the
 // stiff bend mode ring faster than the substep can follow, which shows as shaking.
 const SEG_INERTIA = 1e-5; // kg·m²
-const FRICTION = 0.6; // one coefficient for sticking and sliding, so contacts never stick-slip and judder
-const AIR_DAMPING = 6; // 1/s
-// Fraction of each particle's velocity pulled toward its neighbours' every substep: internal
-// friction that kills wobble along the rope without slowing the rope as a whole.
-const INTERNAL_DAMPING = 0.1;
 // Guides are stiff springs, never hard pins, so a guide that asks for more rope than exists lags instead of stretching it.
 const GUIDE_COMPLIANCE = 2.5e-4;
 const RELEASE = 0.3; // seconds a guide takes to let go
 const GUIDE_MAX_FORCE = 10; // N: enough to lift stiff rope, not to drag it across the table
+
+/** What the rope is made of. The playground (`?tune`) overrides these; knots are tuned on the defaults. */
+export interface RopePhysics {
+  /** kg for a whole rope: heavy for its size, so it drapes and settles like thick cotton rope. */
+  mass: number;
+  /** Bending stiffness EI, N·m². */
+  bend: number;
+  /** Twist stiffness GJ, N·m²: above EI, since the twisted strands resist twisting more than bending. */
+  twist: number;
+  /** One coefficient for sticking and sliding, so contacts never stick-slip and judder. */
+  friction: number;
+  /** Air damping, 1/s. */
+  airDamping: number;
+  /**
+   * Fraction of each particle's velocity pulled toward its neighbours' every substep: internal
+   * friction that kills wobble along the rope without slowing the rope as a whole.
+   */
+  internalDamping: number;
+}
+
+// Cotton laid rope: soft enough to drape and bend tight, heavy and well damped so it settles
+// instead of springing back. Picked by eye in the playground on 2026-10-31; the knots' guides
+// were authored on stiffer rope (EI 0.03, 1 kg) and may need retuning.
+export const DEFAULT_PHYSICS: RopePhysics = {
+  mass: 2.2,
+  bend: 0.01,
+  twist: 0.013,
+  friction: 0.6,
+  airDamping: 15,
+  internalDamping: 0.2,
+};
 
 /** Particles along the rope. Spacing below the radius leaves no gap for other rope to slip through. */
 export function particleCount(rope: RopeDef): number {
@@ -81,7 +104,10 @@ export class RopeSim {
   private readonly props: PropState[];
   private readonly guides: GuideState[];
 
-  constructor(knot: KnotDef) {
+  constructor(
+    knot: KnotDef,
+    private readonly physics: RopePhysics = DEFAULT_PHYSICS,
+  ) {
     const counts = knot.ropes.map(particleCount);
     const n = (this.n = counts.reduce((sum, c) => sum + c, 0));
     this.x = new Float64Array(n * 3);
@@ -104,7 +130,7 @@ export class RopeSim {
       for (let i = 0; i < count; i++) {
         const p = start + i;
         this.x.set(pts[i], p * 3);
-        this.w[p] = count / ROPE_MASS;
+        this.w[p] = count / physics.mass;
         this.radii[p] = def.radius;
         this.spacings[p] = spacing;
         this.rope[p] = k;
@@ -160,7 +186,7 @@ export class RopeSim {
     this.time += H;
     this.updateGuides();
 
-    const damp = Math.exp(-AIR_DAMPING * H);
+    const damp = Math.exp(-this.physics.airDamping * H);
     for (let i = 0; i < n * 3; i += 3) {
       prev[i] = x[i];
       prev[i + 1] = x[i + 1];
@@ -210,7 +236,7 @@ export class RopeSim {
     for (let p = 1; p < n - 1; p++) {
       if (this.end[p] || this.end[p - 1]) continue; // a rope's own end has no neighbour on one side
       for (let i = p * 3; i < p * 3 + 3; i++)
-        v[i] += INTERNAL_DAMPING * ((v[i - 3] + v[i + 3]) / 2 - v[i]);
+        v[i] += this.physics.internalDamping * ((v[i - 3] + v[i + 3]) / 2 - v[i]);
     }
   }
 
@@ -226,8 +252,8 @@ export class RopeSim {
     // segment by θ moves Ω by θ/2, so each counts as inverse mass 1 / (4·I).
     const ds = this.spacings[j];
     const wsum = 2 / (4 * SEG_INERTIA);
-    const bend = ds / (4 * BEND_STIFFNESS) / (H * H);
-    const twist = ds / (4 * TWIST_STIFFNESS) / (H * H);
+    const bend = ds / (4 * this.physics.bend) / (H * H);
+    const twist = ds / (4 * this.physics.twist) / (H * H);
     const lx = (-sgn * r[0]) / (wsum + bend);
     const ly = (-sgn * r[1]) / (wsum + bend);
     const lz = (-sgn * r[2]) / (wsum + twist);
@@ -406,7 +432,7 @@ export class RopeSim {
         rx -= rn * nx;
         ry -= rn * ny;
         rz -= rn * nz;
-        const f = frictionFactor(Math.hypot(rx, ry, rz), pen);
+        const f = this.frictionFactor(Math.hypot(rx, ry, rz), pen);
         x[ia] -= rx * f * ka;
         x[ia + 1] -= ry * f * ka;
         x[ia + 2] -= rz * f * ka;
@@ -427,7 +453,7 @@ export class RopeSim {
       x[i + 1] = radius;
       const rx = x[i] - prev[i];
       const rz = x[i + 2] - prev[i + 2];
-      const f = frictionFactor(Math.hypot(rx, rz), pen);
+      const f = this.frictionFactor(Math.hypot(rx, rz), pen);
       x[i] -= rx * f;
       x[i + 2] -= rz * f;
     }
@@ -480,19 +506,19 @@ export class RopeSim {
         sx -= sn * nx;
         sy -= sn * ny;
         sz -= sn * nz;
-        const f = frictionFactor(Math.hypot(sx, sy, sz), pen);
+        const f = this.frictionFactor(Math.hypot(sx, sy, sz), pen);
         x[i] -= sx * f;
         x[i + 1] -= sy * f;
         x[i + 2] -= sz * f;
       }
     }
   }
-}
 
-/** Fraction of tangential slide to cancel, given how hard the contact pushed. */
-function frictionFactor(slide: number, push: number): number {
-  if (slide === 0) return 0;
-  return Math.min(1, (FRICTION * push) / slide);
+  /** Fraction of tangential slide to cancel, given how hard the contact pushed. */
+  private frictionFactor(slide: number, push: number): number {
+    if (slide === 0) return 0;
+    return Math.min(1, (this.physics.friction * push) / slide);
+  }
 }
 
 /** Evenly spaced points along the rope's start polyline. */
