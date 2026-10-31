@@ -74,6 +74,19 @@ Guides are hands. A natural move grabs one point and lets physics carry the rest
 - **Pull both ends evenly.** Final pull targets far enough apart to cinch (the cinch test), and centred on the knot so it does not slide (the "stays where it was tied" test).
 - **Check what a stage looks like** in the browser at a few step times, not only the tests: tests catch topology and cinching, not awkward motion.
 
+### Checking a change with one bake
+
+`tools/knot-dump.test.ts` bakes one single-rope knot and prints numbers, so each guide change costs one bake (~20 s) instead of a test run or a sweep. It is skipped unless `KNOT` is set, so `pnpm test` ignores it.
+
+```bash
+KNOT=bowline TIMES=13.3,13.9 ATS=0.272,0.95,1 CROSS=13.9,18 npx vitest run tools/knot-dump.test.ts --disableConsoleIntercept
+```
+
+- One row per time in `TIMES` (default: the step times), giving the position of each point in `ATS` (fractions along the rope) as `at(x, height in radii, z)`. Compare it with the guide's target to see whether a hand keeps up, and with nearby strands to see where the rope really is: a held loop on soft rope can end up smaller than its pins.
+- `cross t:` lists where the rope crosses itself in top view, for example `0.52 under 0.73`. An extra crossing means an extra wrap or curve; a missing one means a tuck missed its hole. It is a rough check and can miss crossings inside a tight knot.
+- `stretch` is the worst link stretch (keep it under about 1.1); `closest` is the nearest approach of distant rope parts (under 2R means one passed through another).
+- `tools/out/bake.json` (git-ignored) feeds `tools/baked.html`: with `pnpm dev` running, open `/tools/baked.html` (add `?zoom` for the middle of the table) for a top view with step ticks. The report is also saved to `tools/out/metrics.txt`.
+
 ## Gotchas
 
 - Physics constants in `rope.ts` were tuned with metrics sweeps; the rope material (`DEFAULT_PHYSICS`) is picked by eye in the `?tune` playground; change them deliberately and re-run the full tests. The existing overhand must keep baking bit-identically unless a change is intended.
