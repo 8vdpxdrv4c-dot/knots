@@ -1,6 +1,6 @@
-import type { KnotDef } from "./knots/types";
-import { frameCount, type BakeChunk } from "./sim/bake";
-import { DEFAULT_PHYSICS, FPS, particleCount, type RopePhysics } from "./sim/rope";
+import type { KnotDef } from "../knots/types";
+import { firstFrame, frameCount, type BakeChunk } from "../sim/bake";
+import { DEFAULT_PHYSICS, FPS, particleCount, type RopePhysics } from "../sim/rope";
 
 /**
  * Baked frames of one knot. The simulation fills it from a worker while the user
@@ -27,14 +27,18 @@ export class Timeline {
     this.frames = new Float32Array(this.total * this.n * 3);
     this.normals = new Float32Array(this.total * this.n * 3);
     this.out = { positions: new Float32Array(this.n * 3), normals: new Float32Array(this.n * 3) };
-    const worker = (this.worker = new Worker(new URL("./sim/worker.ts", import.meta.url), {
+    const worker = (this.worker = new Worker(new URL("../sim/worker.ts", import.meta.url), {
       type: "module",
     }));
-    worker.onmessage = (e: MessageEvent<BakeChunk>) => {
-      const { start, frames, normals } = e.data;
+    const store = ({ start, frames, normals }: BakeChunk) => {
       this.frames.set(frames, start * this.n * 3);
       this.normals.set(normals, start * this.n * 3);
       this.baked = start + frames.length / (this.n * 3);
+    };
+    // The start pose is ready at once, so the rope shows while the worker bakes the rest.
+    store(firstFrame(knot, physics));
+    worker.onmessage = (e: MessageEvent<BakeChunk>) => {
+      store(e.data);
       if (this.baked >= this.total) worker.terminate();
       onProgress();
     };

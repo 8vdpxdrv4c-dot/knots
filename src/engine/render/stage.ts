@@ -4,6 +4,7 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import type { Prop } from "../knots/types";
 
 const BACKGROUND = "#ece7de";
+const RESET_TIME = 400; // ms for the camera to ease back to the default view
 /** Where the key light sits; the rope shades its contact darkening by it too. */
 export const KEY_LIGHT = new THREE.Vector3(-0.6, 1.6, 0.9);
 
@@ -77,6 +78,29 @@ export function createStage(canvas: HTMLCanvasElement) {
   controls.maxDistance = 2.5;
   controls.maxPolarAngle = Math.PI * 0.47; // stay above the table
   controls.update();
+  controls.saveState(); // the default view that resetView returns to
+
+  const viewListeners = new Set<() => void>();
+  const notifyView = () => viewListeners.forEach((l) => l());
+  controls.addEventListener("change", notifyView);
+  const isDefaultView = () =>
+    camera.position.distanceTo(controls.position0) < 1e-3 &&
+    controls.target.distanceTo(controls.target0) < 1e-3;
+
+  // A reset eases from where the view is to the default over RESET_TIME.
+  let reset: { from: THREE.Vector3; target: THREE.Vector3; start: number } | null = null;
+  const stepReset = (now: number) => {
+    if (!reset) return;
+    const u = Math.min((now - reset.start) / RESET_TIME, 1);
+    const e = u * u * (3 - 2 * u);
+    camera.position.lerpVectors(reset.from, controls.position0, e);
+    controls.target.lerpVectors(reset.target, controls.target0, e);
+    if (u === 1) {
+      reset = null;
+      controls.reset(); // lands exactly and drops any leftover drag momentum
+    }
+    notifyView();
+  };
 
   const resize = () => {
     const { clientWidth: w, clientHeight: h } = canvas;
@@ -86,15 +110,46 @@ export function createStage(canvas: HTMLCanvasElement) {
     camera.fov = w / h < 1 ? 30 / Math.max(0.55, w / h) : 30;
     camera.updateProjectionMatrix();
   };
-  new ResizeObserver(resize).observe(canvas);
+  const observer = new ResizeObserver(resize);
+  observer.observe(canvas);
   resize();
 
   return {
     renderer,
     scene,
-    render() {
+    render(now: number) {
+      stepReset(now);
       controls.update();
       renderer.render(scene, camera);
     },
+    /** Eases the camera back to the default view; jumps when motion is reduced. */
+    resetView(now: number, instant = false) {
+      // Spend any drag momentum now: with damping on, it would carry the camera off the default
+      // after the reset lands (an update without damping applies and clears it).
+      controls.enableDamping = false;
+      controls.update();
+      controls.enableDamping = true;
+      if (instant) {
+        reset = null;
+        controls.reset();
+      } else reset = { from: camera.position.clone(), target: controls.target.clone(), start: now };
+    },
+    isDefaultView,
+    /** Calls `listener` whenever the camera moves; returns an unsubscribe. */
+    onViewChange(listener: () => void) {
+      viewListeners.add(listener);
+      return () => viewListeners.delete(listener);
+    },
+    dispose() {
+      observer.disconnect();
+      controls.dispose();
+      table.geometry.dispose();
+      table.material.dispose();
+      scene.environment?.dispose();
+      pmrem.dispose();
+      renderer.dispose();
+    },
   };
 }
+
+export type Stage = ReturnType<typeof createStage>;

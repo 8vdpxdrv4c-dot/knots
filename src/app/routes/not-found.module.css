@@ -1,0 +1,16 @@
+.page {
+  display: grid;
+  place-content: center;
+  height: 100dvh;
+  padding: 16px;
+  text-align: center;
+}
+
+.page h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+}
+
+.page a {
+  color: var(--accent);
+}

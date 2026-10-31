@@ -1,0 +1,55 @@
+/* Design tokens and base element styles; everything else lives in each component's CSS module. */
+:root {
+  --ink: #23201c;
+  --muted: #6d665c;
+  --paper: #fffdf9;
+  --panel: rgb(255 253 249 / 0.82);
+  --line: rgb(35 32 28 / 0.12);
+  --accent: #b9522c;
+  --accent-soft: rgb(185 82 44 / 0.16);
+  --stage: #ece7de;
+  --radius: 14px;
+  --shadow: 0 12px 32px -16px rgb(35 32 28 / 0.35);
+  --glass: blur(14px) saturate(1.2);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: var(--stage);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Line icons share one stroke style. */
+.icon {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon-filled {
+  fill: currentColor;
+  stroke: none;
+}

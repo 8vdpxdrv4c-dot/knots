@@ -1,0 +1,4 @@
+# Packages allowed to run install scripts (they download their platform binaries).
+allowBuilds:
+  esbuild: true
+  workerd: true

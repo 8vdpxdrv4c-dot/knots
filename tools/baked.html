@@ -33,7 +33,7 @@
     <canvas id="c"></canvas>
     <div id="bar"><input id="s" type="range" min="0" step="1" /><span id="t"></span></div>
     <script type="module">
-      // Top view of tools/out/bake.json (from knot-dump.test.ts), strands drawn in height order. Open /tools/baked.html on the dev server; ?zoom for the middle of the table, ?box=x0,x1,z0,z1 for any area.
+      // Top view of tools/out/bake.json (from knot-dump.test.ts), strands drawn in height order. Run `pnpm baked` and open http://localhost:5178/baked.html; ?zoom for the middle of the table, ?box=x0,x1,z0,z1 for any area.
       const data = await (await fetch("out/bake.json?" + Date.now())).json();
       const { n, radius: R, frames, steps } = data;
       const counts = data.counts ?? [n]; // ropes back to back

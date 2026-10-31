@@ -5,9 +5,9 @@
 // (default: TIMES) lists where the rope crosses itself.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { test } from "vitest";
-import { bake, frameCount } from "../src/sim/bake";
-import { particleCount } from "../src/sim/rope";
-import { knots } from "../src/knots";
+import { bake, frameCount } from "../src/engine/sim/bake";
+import { particleCount } from "../src/engine/sim/rope";
+import { knots } from "../src/engine/knots";
 
 const list = (v: string | undefined, fallback: number[]) =>
   v ? v.split(",").filter(Boolean).map(Number) : fallback;
