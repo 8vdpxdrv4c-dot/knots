@@ -46,7 +46,7 @@ function Session({
         <KnotPicker knots={knots} currentId={knot.id} />
         <a
           className={iconButtonClass}
-          href="https://github.com/behnamazimi/knots-made-easy"
+          href="https://github.com/behnamazimi/knots"
           target="_blank"
           rel="noopener"
           aria-label="View source on GitHub"
