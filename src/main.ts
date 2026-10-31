@@ -17,9 +17,12 @@ const onProgress = () => {
   if (timeline.ready >= timeline.duration) document.body.dataset.baked = "true";
 };
 let timeline = new Timeline(knot, onProgress, physicsFromUrl());
-const ropeMaterial = createRopeMaterial("#c39f6a", stage.renderer.capabilities.getMaxAnisotropy());
+const materials = new Map<string, THREE.MeshPhysicalMaterial>();
 const ropes = knot.ropes.map((def, k) => {
-  const mesh = new RopeMesh(timeline.counts[k], def, ropeMaterial);
+  const color = def.color ?? "#c39f6a";
+  if (!materials.has(color))
+    materials.set(color, createRopeMaterial(color, stage.renderer.capabilities.getMaxAnisotropy()));
+  const mesh = new RopeMesh(timeline.counts[k], def, materials.get(color)!);
   stage.scene.add(mesh);
   return mesh;
 });

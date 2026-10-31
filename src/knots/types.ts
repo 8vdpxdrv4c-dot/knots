@@ -33,6 +33,8 @@ export interface RopeDef {
    * and rest on the table (y = radius) or hang in the air to drop; a straight line is the usual start.
    */
   start: Vec3[];
+  /** Rope colour, e.g. "#2f5fb3". Leave it out for natural tan; give each rope of a bend its own. */
+  color?: string;
 }
 
 /** A fixed object for rope to tie around: a pole, ring segment or rail. Never moves. */

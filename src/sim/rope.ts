@@ -5,6 +5,7 @@ export const FPS = 60;
 const SUBSTEPS = 24;
 const H = 1 / (FPS * SUBSTEPS);
 const GRAVITY = 9.81;
+const BLOCK = 8; // particles per broad-phase box in the collision test
 const CONTACT_ROUNDS = 4; // fewer lets a hard pull drag rope through rope inside the knot
 // Rotary inertia of each segment, inflated past the real m·r²/4: the real value makes the
 // stiff bend mode ring faster than the substep can follow, which shows as shaking.
@@ -101,6 +102,8 @@ export class RopeSim {
   private readonly rope: Int32Array; // per particle: which rope
   private readonly end: Uint8Array; // per particle: 1 if last of its rope
   private readonly skips: number[]; // per rope
+  private readonly boxes: Float64Array; // per block of BLOCK particles: min xyz (less a margin), max xyz
+  private readonly maxRadius: number;
   private readonly props: PropState[];
   private readonly guides: GuideState[];
 
@@ -119,6 +122,8 @@ export class RopeSim {
     this.q = new Float64Array((n - 1) * 4);
     for (let j = 0; j < n - 1; j++) this.q[j * 4 + 3] = 1;
     this.skips = [];
+    this.boxes = new Float64Array(Math.ceil(n / BLOCK) * 6);
+    this.maxRadius = Math.max(...knot.ropes.map((r) => r.radius));
     let start = 0;
     knot.ropes.forEach((def, k) => {
       const count = counts[k];
@@ -395,11 +400,36 @@ export class RopeSim {
   }
 
   private solveCollisions(): void {
-    const { n, x, prev, w, radii, rope, skips } = this;
-    // shortcut: O(n²) pair test, fine for ~150 particles; add a spatial hash for much longer ropes.
+    const { n, x, prev, w, radii, rope, skips, boxes } = this;
+    // Broad phase: a box round each block of BLOCK particles, grown by a margin that covers
+    // contact distance plus pushes during this pass. Pairs are still visited in the same order,
+    // so results are identical to the plain O(n²) test, just without far-apart blocks.
+    // shortcut: still O(n²) in blocks, fine for a few hundred particles; add a spatial hash for much more.
+    const margin = 4 * this.maxRadius;
+    for (let k = 0, a = 0; a < n; k += 6, a += BLOCK) {
+      boxes.fill(Infinity, k, k + 3);
+      boxes.fill(-Infinity, k + 3, k + 6);
+      for (let i = a; i < Math.min(a + BLOCK, n); i++)
+        for (let c = 0; c < 3; c++) {
+          boxes[k + c] = Math.min(boxes[k + c], x[i * 3 + c] - margin);
+          boxes[k + 3 + c] = Math.max(boxes[k + 3 + c], x[i * 3 + c]);
+        }
+    }
+    const far = (p: number, q: number) =>
+      boxes[p] > boxes[q + 3] ||
+      boxes[q] > boxes[p + 3] ||
+      boxes[p + 1] > boxes[q + 4] ||
+      boxes[q + 1] > boxes[p + 4] ||
+      boxes[p + 2] > boxes[q + 5] ||
+      boxes[q + 2] > boxes[p + 5];
     for (let a = 0; a < n; a++) {
       const ia = a * 3;
+      const boxA = Math.floor(a / BLOCK) * 6;
       for (let b = a + 1; b < n; b++) {
+        if (b % BLOCK === 0 && far(boxA, (b / BLOCK) * 6)) {
+          b += BLOCK - 1;
+          continue;
+        }
         if (rope[a] === rope[b] && b - a < skips[rope[a]]) continue;
         const minD = radii[a] + radii[b];
         const ib = b * 3;
