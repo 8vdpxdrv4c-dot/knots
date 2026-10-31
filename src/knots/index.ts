@@ -1,6 +1,7 @@
+import { bowline } from "./bowline";
 import { figureEight } from "./figure-eight";
 import { overhand } from "./overhand";
 import type { KnotDef } from "./types";
 
 /** Every knot in the app, in menu order. Add new knots here. */
-export const knots: KnotDef[] = [overhand, figureEight];
+export const knots: KnotDef[] = [overhand, figureEight, bowline];
