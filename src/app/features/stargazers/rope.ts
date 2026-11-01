@@ -61,6 +61,7 @@ export class StarRope {
   private faces = new Map<number, { img: HTMLImageElement; cut: HTMLCanvasElement | null }>();
   private spots: { i: number; x: number; y: number }[] = []; // avatars drawn last frame, for hover
   private hovered = -1;
+  private slot: { x: number; y: number } | null = null; // the empty spot for the next star's avatar
   private hoverGrow = 0; // 0 → 1 as the hovered avatar grows
   private found = -1; // the star someone searched for: centred and marked with its number
   private foundAt = 0;
@@ -200,6 +201,12 @@ export class StarRope {
     return hit === -1 ? null : this.stars[hit];
   }
 
+  /** Whether a point (canvas px) is on the empty spot waiting for the next star. */
+  overSlot(mx: number, my: number) {
+    const s = this.slot;
+    return !!s && (s.x - mx) ** 2 + (s.y - my) ** 2 < (this.t * AVATAR + 3) ** 2;
+  }
+
   private relayout() {
     this.layoutCache = ropeLayout(this.times, this.shown);
     this.dirty = true;
@@ -233,9 +240,10 @@ export class StarRope {
     this.fit();
     const before = this.scroll;
     const end = this.layoutCache.end * this.t;
-    // The rope starts at the middle of the screen and grows right until it fills it.
+    // A rope shorter than the screen sits centred; a longer one can swipe its start to mid-screen.
     const min = -this.w / 2;
-    const max = Math.max(min, end + SPARE * 4.4 * this.t - this.w);
+    const over = end + SPARE * 4.4 * this.t - this.w;
+    const max = over > 0 ? over : over / 2;
     if (this.target !== null) {
       const goal = Math.min(Math.max(this.target, min), max);
       this.scroll += (goal - this.scroll) * ease(0.1, dt);
@@ -510,8 +518,37 @@ export class StarRope {
       }
     }
 
-    // A note on the spare rope, above the pile and the rope coming into it.
-    const top = Math.min(...pile.map(([, y]) => y), ey);
+    // An empty, dashed spot for the next star, tied where its knot will go, once every star is shown.
+    this.slot = null;
+    if (this.shown === this.stars.length) {
+      const i = this.shown;
+      const [x, y, a] = this.point(end - 4 * t);
+      const side = i % 2 ? 1 : -1;
+      const off = t * 1.3 + r + jitter(i, 1) * t * 1.6;
+      const [sx, sy] = [x - Math.sin(a) * off * side, y + Math.cos(a) * off * side];
+      this.slot = { x: sx, y: sy };
+      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = ACCENT;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(sx - Math.sin(a) * -r * side, sy + Math.cos(a) * -r * side);
+      ctx.stroke();
+      ctx.fillStyle = "rgb(255 253 249 / 0.7)";
+      ctx.beginPath();
+      ctx.arc(sx, sy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = ACCENT;
+      ctx.font = `700 ${Math.round(r)}px ui-sans-serif, system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("★", sx, sy + 1);
+    }
+
+    // A note on the spare rope, above the pile, the rope coming into it and the empty spot.
+    const top = Math.min(...pile.map(([, y]) => y), ey, this.slot ? this.slot.y - r : ey);
     ctx.fillStyle = ACCENT;
     ctx.font = "700 12px ui-sans-serif, system-ui, sans-serif";
     ctx.textAlign = "center";

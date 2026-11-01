@@ -36,6 +36,7 @@ export function StargazerRope({ src, repoUrl }: { src: string; repoUrl: string }
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [hover, setHover] = useState<{ star: Star; x: number; y: number } | null>(null);
+  const [onSlot, setOnSlot] = useState(false);
   const [query, setQuery] = useState("");
   const [found, setFound] = useState<{ index: number } | "missing" | null>(null);
 
@@ -146,17 +147,19 @@ export function StargazerRope({ src, repoUrl }: { src: string; repoUrl: string }
           const [x, y] = point(e);
           const star = rope.current?.pick(x, y);
           setHover(star ? { star, x: e.clientX, y: e.clientY } : null);
+          setOnSlot(!star && !!rope.current?.overSlot(x, y));
         }}
         onPointerLeave={() => {
           rope.current?.pick(-1e9, -1e9);
           setHover(null);
+          setOnSlot(false);
         }}
-        onClick={() =>
-          hover &&
-          !rope.current?.swiped &&
-          window.open(hover.star.user.html_url, "_blank", "noopener")
-        }
-        style={{ cursor: hover ? "pointer" : "grab" }}
+        onClick={() => {
+          if (rope.current?.swiped) return;
+          if (hover) window.open(hover.star.user.html_url, "_blank", "noopener");
+          else if (onSlot) window.open(repoUrl, "_blank", "noopener");
+        }}
+        style={{ cursor: hover || onSlot ? "pointer" : "grab" }}
       />
       {hover && (
         <div className={styles.tip} style={{ left: hover.x, top: hover.y }}>
@@ -192,7 +195,9 @@ export function StargazerRope({ src, repoUrl }: { src: string; repoUrl: string }
             {latest.map((s) => (
               <img key={s.user.login} src={avatar(s, 48)} alt={`@${s.user.login}`} />
             ))}
-            {thisWeek > 0 && <span className={styles.chip}>+{thisWeek} this week</span>}
+            {thisWeek > 0 && thisWeek < count && (
+              <span className={styles.chip}>+{thisWeek} this week</span>
+            )}
           </div>
         )}
 
