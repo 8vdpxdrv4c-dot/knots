@@ -1,7 +1,9 @@
 import { useMemo, useRef, useState } from "react";
 import { useMountEffect } from "../../shared/hooks";
+import { knotPath } from "../../shared/site";
 import { PauseIcon, PlayIcon, SearchIcon } from "../../shared/ui/icons";
 import { type Feed, decodeFeed } from "./feed";
+import { knotFor } from "./layout";
 import { type Star, StarRope, countAt } from "./rope";
 import styles from "./stargazers.module.css";
 
@@ -9,6 +11,11 @@ const PLAY_MS = 6000;
 const MILESTONES = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000];
 const WEEK = 7 * 864e5;
 const avatar = (s: Star, size: number) => `${s.user.avatar_url}&s=${size}`;
+/** "Bowline · 4% of stargazers" */
+const knotLine = (s: Star) => {
+  const kind = knotFor(s.user.id);
+  return `${kind.name} · ${Math.round(kind.odds * 100)}% of stargazers`;
+};
 const day = (iso: string) => new Date(iso).toLocaleDateString("en", { dateStyle: "medium" });
 const month = (t: number) =>
   new Date(t).toLocaleDateString("en", { month: "short", year: "numeric" });
@@ -152,17 +159,16 @@ export function StargazerRope({ src, repoUrl }: { src: string; repoUrl: string }
       {hover && (
         <div className={styles.tip} style={{ left: hover.x, top: hover.y }}>
           <strong>@{hover.star.user.login}</strong>
-          <span>
-            starred{" "}
-            {new Date(hover.star.starred_at).toLocaleDateString("en", { dateStyle: "medium" })}
-          </span>
+          <span>{knotLine(hover.star)}</span>
+          <span>starred {day(hover.star.starred_at)}</span>
         </div>
       )}
 
       <section ref={intro} className={styles.hud}>
         <p className={styles.eyebrow}>Stargazer rope</p>
         <h1 className={styles.total}>
-          <strong>{loaded ? count.toLocaleString() : "…"}</strong> knots tied
+          <strong>{loaded ? count.toLocaleString() : "…"}</strong> {count === 1 ? "knot" : "knots"}{" "}
+          tied
         </h1>
         <div
           className={styles.goal}
@@ -212,6 +218,9 @@ export function StargazerRope({ src, repoUrl }: { src: string; repoUrl: string }
               <br />
               {day(hit.starred_at)}
             </span>
+            <a className={styles.learn} href={knotPath(knotFor(hit.user.id).id)}>
+              {knotLine(hit)} <b>Learn it →</b>
+            </a>
           </div>
         )}
         {found === "missing" && (

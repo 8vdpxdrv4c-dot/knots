@@ -1,3 +1,4 @@
 # Written by tools, one star per line.
 public/stargazers.json
 tools/stargazers.mock.json
+.github/stargazer-rope.svg

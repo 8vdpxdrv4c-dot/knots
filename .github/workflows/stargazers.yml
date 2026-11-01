@@ -1,6 +1,7 @@
 # Ties a knot on the stargazer rope for every new GitHub star: refreshes public/stargazers.json,
-# deploys the site to Cloudflare Pages and commits the feed. Runs when someone stars the repo, and
-# once a day to catch anything a star event missed.
+# redraws the README's rope (.github/stargazer-rope.svg), deploys the site to Cloudflare Pages and
+# commits both. Runs when someone stars the repo, and once a day to catch anything a star event
+# missed.
 # Needs repository secrets CLOUDFLARE_API_TOKEN (Pages: Edit) and CLOUDFLARE_ACCOUNT_ID.
 name: Stargazers
 
@@ -48,6 +49,10 @@ jobs:
       - if: steps.feed.outputs.changed
         run: pnpm install --frozen-lockfile
 
+      - if: steps.feed.outputs.changed
+        name: Redraw the README rope
+        run: node tools/readme-rope.mjs
+
       # Deploy before committing: if the push fails, the next run still sees the change and redeploys.
       - if: steps.feed.outputs.changed
         name: Deploy
@@ -57,10 +62,11 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - if: steps.feed.outputs.changed
-        name: Commit the feed
+        name: Commit the feed and the rope
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Tie the latest stargazer knots" public/stargazers.json
+          git add public/stargazers.json .github/stargazer-rope.svg
+          git commit -m "Tie the latest stargazer knots"
           git pull --rebase
           git push

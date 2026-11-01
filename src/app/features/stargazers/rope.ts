@@ -1,7 +1,9 @@
+import { KNOT_KINDS, type KnotKind, jitter, knotFor, ropeLayout } from "./layout";
+
 /** One entry of GitHub's stargazers API (`Accept: application/vnd.github.star+json`). */
 export type Star = {
   starred_at: string;
-  user: { login: string; avatar_url: string; html_url: string };
+  user: { login: string; id: number; avatar_url: string; html_url: string };
 };
 
 /** How many stars were given by `time` (stars sorted by date). */
@@ -11,51 +13,10 @@ export const countAt = (stars: readonly Star[], time: number) => {
   return n;
 };
 
-// Rope lengths, in rope diameters.
-const LEAD = 8; // bare rope before the first knot and after the last
-const TIGHT = 5; // knot to knot for stars given moments apart: the knot and its avatars just fit
-const STEP = 3.2; // extra rope each time the wait between two stars doubles, past the usual wait
-const LOOSE = 34; // the most rope one lull gets, however long it was
-
-/** A steady random number in [0, 1) for star `i`, so its knot never moves as stars arrive. */
-export const jitter = (i: number, salt = 0) => {
-  const h = Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453;
-  return h - Math.floor(h);
-};
-
-/**
- * Rope between two knots for a wait of `wait`, where `usual` is this repo's typical wait between
- * stars: tight for a burst, a fixed step more each time the wait doubles, capped. On a log scale
- * a quiet week reads clearly longer than a quiet hour without becoming a long empty swipe, and
- * measuring against the repo's own pace makes it read the same for a repo with 5 stars a year or
- * 1,000 a day: tight means busier than usual, loose means quieter.
- */
-export const gapFor = (wait: number, usual: number) =>
-  Math.min(TIGHT + STEP * Math.log2(1 + Math.max(wait, 0) / usual), LOOSE);
-
-/**
- * Where each of the first `shown` knots sits along the rope, in rope diameters from its start,
- * given every star's time in ms (sorted). Spacing comes from the wait since the star before,
- * with a little hand-tied wobble. The usual wait is the median over all stars, so knots don't
- * move while the rope replays.
- */
-export function ropeLayout(times: readonly number[], shown: number) {
-  const waits = times.slice(1).map((t, i) => t - times[i]);
-  const sorted = [...waits].sort((a, b) => a - b);
-  const usual = Math.max(sorted[Math.floor(sorted.length / 2)] ?? 0, 60_000); // at least a minute
-  const knots: number[] = [];
-  let s = LEAD;
-  for (let i = 0; i < Math.min(shown, times.length); i++) {
-    if (i > 0) s += gapFor(waits[i - 1], usual) * (0.88 + 0.24 * jitter(i));
-    knots.push(s);
-  }
-  return { knots, end: (knots[knots.length - 1] ?? 0) + LEAD };
-}
-
 /** The band the rope may use, in canvas px (below the intro panel, above the timeline bar). */
 export type Band = { top: number; bottom: number };
 
-// Pictures of the real rope, a finished overhand knot and the rope's end, made by
+// Pictures of the real rope, each finished knot and the rope's end, made by
 // tools/stargazer-sprites.mjs at PX pixels per rope diameter; the end sits TIP diameters into
 // its picture. Drawing them is far cheaper than building the 3D rope.
 const PX = 32;
@@ -107,7 +68,10 @@ export class StarRope {
   private drag: { x: number; scroll: number; moved: number; last: number; at: number } | null =
     null;
   private strip: HTMLCanvasElement | null = null; // the rope picture twice over, so slices never wrap
-  private knot = image("/stargazers/overhand.png");
+  private knots = Object.fromEntries(
+    KNOT_KINDS.map((k) => [k.id, image(`/stargazers/${k.id}.png`)]),
+  ) as Record<KnotKind["id"], HTMLImageElement>;
+  private kinds: KnotKind[] = [];
   private tip = image("/stargazers/tip.png");
   private dirty = true; // something changed: draw the next frame
   private last = 0;
@@ -130,7 +94,8 @@ export class StarRope {
       c.drawImage(rope, rope.width, 0);
       this.dirty = true;
     };
-    for (const img of [this.knot, this.tip]) img.onload = () => (this.dirty = true);
+    for (const img of [...Object.values(this.knots), this.tip])
+      img.onload = () => (this.dirty = true);
 
     this.on("pointerdown", (e: PointerEvent) => {
       canvas.setPointerCapture(e.pointerId);
@@ -192,6 +157,7 @@ export class StarRope {
 
   setStars(stars: Star[]) {
     this.stars = stars;
+    this.kinds = stars.map((s) => knotFor(s.user.id));
     this.loaded = true;
     this.times = stars.map((s) => Date.parse(s.starred_at));
     this.relayout();
@@ -448,8 +414,6 @@ export class StarRope {
 
     // Each star: its knot on the rope, its avatar tied beside it, alternating above and below.
     // New knots pop in: they grow from nothing with a little overshoot.
-    const kw = (this.knot.width / PX) * t;
-    const kh = (this.knot.height / PX) * t;
     const r = t * AVATAR;
     const pop = (i: number) => {
       const at = this.born.get(i);
@@ -463,9 +427,14 @@ export class StarRope {
     knots.forEach((k, i) => {
       const s = k * t;
       if (s < this.scroll - r * 3 || s > this.scroll + this.w + r * 3) return;
-      const [x, y] = this.point(s);
-      // Turned to the rope either side of it, so both ends of the knot lie on the rope.
-      const a = Math.atan2(this.wander(s + t * 2.5) - this.wander(s - t * 2.5), t * 5);
+      // On the chord between the rope under its picture's two ends, so both ends lie on the rope
+      // even where it bends.
+      const img = this.knots[this.kinds[i].id];
+      const half = img.naturalWidth ? (img.width / PX / 2) * t : t * 2.5;
+      const [x0, y0] = this.point(s - half);
+      const [x1, y1] = this.point(s + half);
+      const [x, y] = [(x0 + x1) / 2, (y0 + y1) / 2];
+      const a = Math.atan2(y1 - y0, x1 - x0);
       // Alternating sides, each tie a little longer or shorter and leaning a little, by hand.
       const side = i % 2 ? 1 : -1;
       const off = (t * 1.3 + r + jitter(i, 1) * t * 1.6) * pop(i);
@@ -478,14 +447,15 @@ export class StarRope {
       this.spots.push({ i, x: ax, y: ay });
     });
     ctx.stroke();
-    if (this.knot.complete && this.knot.naturalWidth)
-      for (const [x, y, a, i] of tied) {
-        const p = pop(i);
-        ctx.translate(x, y);
-        ctx.rotate(a);
-        ctx.drawImage(this.knot, (-kw / 2) * p, (-kh / 2) * p, kw * p, kh * p);
-        reset();
-      }
+    for (const [x, y, a, i] of tied) {
+      const img = this.knots[this.kinds[i].id];
+      if (!img.complete || !img.naturalWidth) continue;
+      const [kw, kh] = [(img.width / PX) * t * pop(i), (img.height / PX) * t * pop(i)];
+      ctx.translate(x, y);
+      ctx.rotate(a);
+      ctx.drawImage(img, -kw / 2, -kh / 2, kw, kh);
+      reset();
+    }
 
     // Avatars, the searched-for star last so it sits on top of its neighbours.
     this.spots.sort((a, b) => Number(a.i === this.found) - Number(b.i === this.found));

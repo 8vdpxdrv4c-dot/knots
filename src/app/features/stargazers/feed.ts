@@ -13,6 +13,7 @@ export function decodeFeed(feed: Feed): Star[] {
     starred_at: new Date((t += dt) * 1000).toISOString(),
     user: {
       login,
+      id,
       avatar_url: `https://avatars.githubusercontent.com/u/${id}?v=4`,
       html_url: `https://github.com/${login}`,
     },

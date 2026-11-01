@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { countAt, gapFor, jitter, ropeLayout } from "./rope";
+import { KNOT_KINDS, gapFor, jitter, knotFor, ropeLayout } from "./layout";
+import { countAt } from "./rope";
 
 const HOUR = 36e5;
 // 300 stars an uneven while apart: bursts of minutes to lulls of days.
 const times = [0];
 for (let i = 1; i < 300; i++) times.push(times[i - 1] + 2 ** (jitter(i, 7) * 12) * 60_000);
-const user = { login: "", avatar_url: "", html_url: "" };
+const user = { login: "", id: 1, avatar_url: "", html_url: "" };
 const stars = times.map((t) => ({ starred_at: new Date(t).toISOString(), user }));
 
 describe("stargazer rope", () => {
@@ -36,5 +37,14 @@ describe("stargazer rope", () => {
     const all = ropeLayout(times, times.length).knots;
     expect(ropeLayout(times, 100).knots).toEqual(all.slice(0, 100));
     expect(all.slice(1).every((k, i) => k > all[i])).toBe(true);
+  });
+
+  it("gives each stargazer the same knot every time, rarer knots to fewer of them", () => {
+    expect(knotFor(583231)).toBe(knotFor(583231));
+    const ids = Array.from({ length: 20_000 }, (_, i) => 1000 + i * 7919);
+    for (const kind of KNOT_KINDS) {
+      const share = ids.filter((id) => knotFor(id) === kind).length / ids.length;
+      expect(share).toBeCloseTo(kind.odds, 1);
+    }
   });
 });
