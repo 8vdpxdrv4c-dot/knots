@@ -6,7 +6,7 @@ import { bake } from "./bake";
 // to a knot or to the physics updates its hash here (the failure message prints the new one).
 const FINGERPRINTS: Record<string, string> = {
   overhand: "6fa9fda654de",
-  "figure-eight": "9b04923f61e8",
+  "figure-eight": "815fa7a4f198",
   bowline: "edc1585db70c",
   "clove-hitch": "e47109ab703c",
   zeppelin: "1d60633c1b56",

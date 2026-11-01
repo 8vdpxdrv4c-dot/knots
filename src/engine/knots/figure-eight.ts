@@ -26,7 +26,7 @@ export const figureEight: KnotDef = {
       ],
     },
   ],
-  duration: 15.8,
+  duration: 17.2,
   steps: [
     { t: 0, title: "Lay the rope out straight" },
     { t: 0.4, title: "Fold the working end back into an S" },
@@ -34,7 +34,7 @@ export const figureEight: KnotDef = {
     { t: 7, title: "Pass the tip under the rope, up to the top beside the loop" },
     { t: 9.8, title: "Tuck the tip down through the loop" },
     { t: 13.2, title: "Pull both ends to tighten" },
-    { t: 15.2, title: "Done: a figure-eight knot" },
+    { t: 16.6, title: "Done: a figure-eight knot" },
   ],
   guides: [
     // Anchor and eye pins hold until the pull has taken over, or the standing part gets dragged.
@@ -177,14 +177,29 @@ export const figureEight: KnotDef = {
       grab: 13.2,
       compliance: 0.001,
       force: 250,
-      path: [{ t: 14.4, p: [-1.09, 0.04, 0] }, { t: 15.4 }],
+      path: [{ t: 14.4, p: [-1.09, R, 0] }, { t: 15.2 }, { t: 15.8, p: [-1.07, R, 0] }, { t: 16 }],
     },
     {
       at: 1,
       grab: 13.2,
       compliance: 0.001,
       force: 250,
-      path: [{ t: 14.4, p: [0.56, 0.04, 0] }, { t: 15.4 }],
+      path: [{ t: 14.4, p: [0.56, R, 0] }, { t: 15.2 }, { t: 15.8, p: [0.54, R, 0] }, { t: 16 }],
+    },
+
+    // Pulled tight, the knot stands up on its edge. While the ends ease off (above), a hand rolls its
+    // top toward the camera round the knot's own middle, so it lies flat and shows the 8 without
+    // sliding off the rope's line.
+    {
+      at: 0.646,
+      grab: 15.2,
+      force: 40,
+      path: [
+        { t: 15.8, p: [0.21, 0.05, 0] },
+        { t: 16.2, p: [0.21, 0.033, 0.012] },
+        { t: 16.5, p: [0.21, 0.024, 0.02] },
+        { t: 16.8 },
+      ],
     },
   ],
 };
