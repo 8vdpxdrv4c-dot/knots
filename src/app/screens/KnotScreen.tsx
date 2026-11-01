@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { knots } from "../../engine/knots";
 import type { KnotDef } from "../../engine/knots/types";
 import { Player } from "../../engine/playback/player";
@@ -9,9 +9,9 @@ import { KnotPicker } from "../features/picker";
 import { PlayerBar } from "../features/player";
 import { Tuner, physicsFromParams } from "../features/tuner";
 import { ResetViewButton, ViewerCanvas, type StartViewer } from "../features/viewer";
-import { knotImagePath } from "../shared/site";
+import { REPO_URL, STARGAZERS_PATH, knotImagePath } from "../shared/site";
 import { iconButtonClass } from "../shared/ui/IconButton";
-import { GitHubIcon } from "../shared/ui/icons";
+import { GitHubIcon, StarIcon } from "../shared/ui/icons";
 import styles from "./KnotScreen.module.css";
 
 /** A knot's whole page: the 3D view, its name and summary, the player, the picker and the links. */
@@ -44,9 +44,12 @@ function Session({
       <ViewerCanvas poster={knotImagePath(knot.id)} start={start} onViewer={setViewer} />
       <header className={styles.top}>
         <KnotPicker knots={knots} currentId={knot.id} />
+        <Link className={styles.stars} to={STARGAZERS_PATH}>
+          <StarIcon /> Stargazer rope
+        </Link>
         <a
           className={iconButtonClass}
-          href="https://github.com/behnamazimi/knots"
+          href={REPO_URL}
           target="_blank"
           rel="noopener"
           aria-label="View source on GitHub"
