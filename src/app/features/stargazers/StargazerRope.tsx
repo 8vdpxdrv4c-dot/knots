@@ -7,7 +7,8 @@ import { knotFor } from "./layout";
 import { type Star, StarRope, countAt } from "./rope";
 import styles from "./stargazers.module.css";
 
-const PLAY_MS = 6000;
+/** How long the replay takes: a beat per star, so a few stars don't crawl, up to six seconds. */
+const playMs = (stars: number) => Math.min(800 + stars * 150, 6000);
 const MILESTONES = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000];
 const WEEK = 7 * 864e5;
 const avatar = (s: Star, size: number) => `${s.user.avatar_url}&s=${size}`;
@@ -54,10 +55,11 @@ export function StargazerRope({ src, repoUrl }: { src: string; repoUrl: string }
     const a = Date.parse(list[0].starred_at);
     const b = Date.parse(list[list.length - 1].starred_at);
     const from = time > a && time < b ? time : a;
-    const t0 = performance.now() - ((from - a) / (b - a || 1)) * PLAY_MS;
+    const ms = playMs(list.length);
+    const t0 = performance.now() - ((from - a) / (b - a || 1)) * ms;
     setPlaying(true);
     const tick = (now: number) => {
-      const u = Math.min((now - t0) / PLAY_MS, 1);
+      const u = Math.min((now - t0) / ms, 1);
       seek(a + (b - a) * u, list);
       if (u < 1) raf.current = requestAnimationFrame(tick);
       else setPlaying(false);

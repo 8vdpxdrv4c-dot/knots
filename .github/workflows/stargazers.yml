@@ -1,7 +1,7 @@
 # Ties a knot on the stargazer rope for every new GitHub star: refreshes public/stargazers.json,
-# redraws the README's rope (.github/stargazer-rope.svg), deploys the site to Cloudflare Pages and
-# commits both. Runs when someone stars the repo, and once a day to catch anything a star event
-# missed.
+# redraws the README's rope (.github/stargazer-rope.svg, linked from README.md with ?v=<its hash> so
+# GitHub doesn't show a cached one), deploys the site to Cloudflare Pages and commits all three.
+# Runs when someone stars the repo, and once a day to catch anything a star event missed.
 # Needs repository secrets CLOUDFLARE_API_TOKEN (Pages: Edit) and CLOUDFLARE_ACCOUNT_ID.
 name: Stargazers
 
@@ -66,7 +66,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/stargazers.json .github/stargazer-rope.svg
+          git add public/stargazers.json .github/stargazer-rope.svg README.md
           git commit -m "Tie the latest stargazer knots"
           git pull --rebase
           git push
