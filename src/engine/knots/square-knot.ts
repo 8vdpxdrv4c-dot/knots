@@ -9,7 +9,9 @@ import type { KnotDef, Vec3 } from "./types";
 // same way. Pull all four ends.
 const R = 0.012;
 const W = 0.05; // tan U radius
-const TAN_END = 0.5; // the C's tail runs out to x = 0.5 on the far side
+// The C's tail runs out to x = 0.33 on the far side: short, so it ends as long as blue's tail. Blue's
+// end swings round its tip, which ties the same knot as passing under it.
+const TAN_END = 0.33;
 const BLUE_Z = 0.015; // blue runs inside the C a little to the near side, leaving room for its end
 const BLUE_END: Vec3 = [-0.3, R, 0.12]; // blue's end starts clear of where tan's curve rolls
 const BLUE = 1.37;
@@ -81,15 +83,15 @@ export const squareKnot: KnotDef = {
     // One hand pinches both legs of the C and lifts them so the end can pass under.
     {
       rope: 1,
-      at: tan(T_RIM - 0.32),
+      at: tan(T_RIM - 0.28),
       grab: 5.2,
-      path: [{ t: 5.7, p: [0.32, 0.08, W] }, { t: 6.9 }, { t: 7.3, p: [0.32, R, W] }, { t: 9.9 }],
+      path: [{ t: 5.7, p: [0.28, 0.08, W] }, { t: 6.9 }, { t: 7.3, p: [0.28, R, W] }, { t: 9.9 }],
     },
     {
       rope: 1,
-      at: tan(T_FAR + 0.32),
+      at: tan(T_FAR + 0.28),
       grab: 5.2,
-      path: [{ t: 5.7, p: [0.32, 0.08, -W] }, { t: 6.9 }, { t: 7.3, p: [0.32, R, -W] }, { t: 9.9 }],
+      path: [{ t: 5.7, p: [0.28, 0.08, -W] }, { t: 6.9 }, { t: 7.3, p: [0.28, R, -W] }, { t: 9.9 }],
     },
     {
       at: 1,
@@ -102,11 +104,11 @@ export const squareKnot: KnotDef = {
         { t: 4.3, p: [0.1, 0.05, W] },
         { t: 4.6, p: [0.14, R, 0.1] },
         { t: 5.2, p: [0.46, R, 0.1] },
-        // Swings round like a page under both lifted legs, curls over the far leg into the C, then
-        // goes down under the rim's far corner and out.
-        { t: 5.9, p: [0.44, R, 0.0] },
-        { t: 6.3, p: [0.39, R, -0.08] },
-        { t: 6.7, p: [0.3, R, -0.16] },
+        // Swings round like a page under the lifted near leg and round the far leg's tip, curls
+        // over the far leg into the C, then goes down under the rim's far corner and out.
+        { t: 5.9, p: [0.41, R, 0.0] },
+        { t: 6.3, p: [0.35, R, -0.08] },
+        { t: 6.7, p: [0.27, R, -0.16] },
         { t: 7.1, p: [0.19, R, -0.19] },
         { t: 7.45, p: [0.15, 0.06, -0.1] },
         { t: 7.75, p: [0.11, 0.06, -0.03] },
@@ -118,8 +120,8 @@ export const squareKnot: KnotDef = {
       ],
     },
 
-    // Pull the ends up the screen to close both C's, let go, then pull the standing parts apart:
-    // the knot settles on their line.
+    // Pull blue's end up the screen and let go, then pull the standing parts apart: the knot
+    // settles on their line. Tan's short end is left free, then laid up the screen.
     {
       at: 1,
       grab: 9.9,
@@ -130,10 +132,8 @@ export const squareKnot: KnotDef = {
     {
       rope: 1,
       at: 1,
-      grab: 9.9,
-      compliance: 0.001,
-      force: 450,
-      path: [{ t: 10.7, p: [0.3, 0.04, -0.22] }, { t: 11.4, p: [0.16, 0.04, -0.3] }, { t: 11.6 }],
+      grab: 12.5,
+      path: [{ t: 13.3, p: [0.16, 0.04, -0.2] }, { t: 13.5 }],
     },
     {
       at: 0,
