@@ -21,9 +21,9 @@ export function encode(stars) {
   return `{"v":1,"t0":${t0},"s":[\n${rows.join(",\n")}\n]}\n`;
 }
 
-/** The feed → [{login, id, time (ms)}]. The mock file (`"mock": true`) counts as nobody. */
+/** The feed → [{login, id, time (ms)}]. */
 export function decode(feed) {
-  if (feed?.v !== 1 || feed.mock) return [];
+  if (feed?.v !== 1) return [];
   let t = feed.t0;
   return feed.s.map(([login, id, dt]) => ({ login, id, time: (t += dt) * 1000 }));
 }

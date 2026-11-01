@@ -33,8 +33,4 @@ describe("stargazer feed", () => {
       star("fresh", 3, "2026-10-06T00:00:00Z"),
     ]);
   });
-
-  it("starts the real rope fresh over the mock data", () => {
-    expect(decode({ v: 1, mock: true, t0: 0, s: [["fake", 1, 0]] })).toEqual([]);
-  });
 });

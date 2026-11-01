@@ -1,5 +1,5 @@
-// Writes public/stargazers.json: fake stars in the stargazer feed over 90 days, marked as mock so the
-// first real run of tools/stargazers.mjs replaces them. About
+// Writes tools/stargazers.mock.json, which the dev server shows instead of the real (maybe empty)
+// public/stargazers.json: fake stars in the stargazer feed over 90 days. About
 // 10 a day (fewer at weekends), a few big days of 50 or so from a launch post or a share, and a
 // few quiet stretches with none.
 // Run: node tools/mock-stargazers.mjs
@@ -82,8 +82,5 @@ stars.sort((a, b) => a.time - b.time);
 // Two quiet weeks before the newest 5 stars: everything older moves 14 days back, so the rope shows
 // what a long lull looks like right where it opens.
 for (const star of stars.slice(0, -5)) star.time -= 14 * DAY;
-writeFileSync(
-  new URL("../public/stargazers.json", import.meta.url),
-  encode(stars).replace('{"v":1,', '{"v":1,"mock":true,'),
-);
+writeFileSync(new URL("stargazers.mock.json", import.meta.url), encode(stars));
 console.log(`${stars.length} stars`);
