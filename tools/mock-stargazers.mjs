@@ -84,6 +84,11 @@ for (let d = 0; d < days; d++) {
   }
 }
 stars.sort((a, b) => a.starred_at.localeCompare(b.starred_at));
+// Two quiet weeks before the newest 5 stars: everything older moves 14 days back, so the rope shows
+// what a long lull looks like right where it opens.
+for (const star of stars.slice(0, -5))
+  star.starred_at =
+    new Date(Date.parse(star.starred_at) - 14 * DAY).toISOString().slice(0, 19) + "Z";
 writeFileSync(
   new URL("../public/stargazers.json", import.meta.url),
   JSON.stringify(stars, null, 1) + "\n",
