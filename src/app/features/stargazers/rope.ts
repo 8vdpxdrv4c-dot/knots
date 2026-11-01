@@ -11,54 +11,45 @@ export const countAt = (stars: readonly Star[], time: number) => {
   return n;
 };
 
-/** A day that got stars: `start` is its first star's index. */
-export type Day = { date: string; start: number; count: number };
-
-/** Groups date-sorted stars by UTC day. Days nobody starred simply don't appear. */
-export function groupDays(stars: readonly Star[]): Day[] {
-  const days: Day[] = [];
-  stars.forEach((s, i) => {
-    const date = s.starred_at.slice(0, 10);
-    const day = days[days.length - 1];
-    if (day?.date === date) day.count++;
-    else days.push({ date, start: i, count: 1 });
-  });
-  return days;
-}
-
 // Rope lengths, in rope diameters.
-const LEAD = 8; // bare rope before the first star
-const UNIT = 8; // rope per star on average: one knot, with room either side as on a real rope
-const DAY_GAP = 3; // between one day's knots and the next day's
+const LEAD = 8; // bare rope before the first knot and after the last
+const TIGHT = 5; // knot to knot for stars given moments apart: the knot and its avatars just fit
+const STEP = 3.2; // extra rope each time the wait between two stars doubles, past the usual wait
+const LOOSE = 34; // the most rope one lull gets, however long it was
 
-/** A steady random number in [0, 1) for star `i`, so its spacing never changes as stars arrive. */
+/** A steady random number in [0, 1) for star `i`, so its knot never moves as stars arrive. */
 export const jitter = (i: number, salt = 0) => {
   const h = Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453;
   return h - Math.floor(h);
 };
 
 /**
- * Where everything sits along the rope, in rope diameters from its start, for the first `shown`
- * stars: each star takes about the same length of rope (a little more or less, as hands tie
- * them), so a busy day is a long run of knots. Days sit one after another with a short gap.
+ * Rope between two knots for a wait of `wait`, where `usual` is this repo's typical wait between
+ * stars: tight for a burst, a fixed step more each time the wait doubles, capped. On a log scale
+ * a quiet week reads clearly longer than a quiet hour without becoming a long empty swipe, and
+ * measuring against the repo's own pace makes it read the same for a repo with 5 stars a year or
+ * 1,000 a day: tight means busier than usual, loose means quieter.
  */
-export function ropeLayout(days: readonly Day[], shown: number) {
+export const gapFor = (wait: number, usual: number) =>
+  Math.min(TIGHT + STEP * Math.log2(1 + Math.max(wait, 0) / usual), LOOSE);
+
+/**
+ * Where each of the first `shown` knots sits along the rope, in rope diameters from its start,
+ * given every star's time in ms (sorted). Spacing comes from the wait since the star before,
+ * with a little hand-tied wobble. The usual wait is the median over all stars, so knots don't
+ * move while the rope replays.
+ */
+export function ropeLayout(times: readonly number[], shown: number) {
+  const waits = times.slice(1).map((t, i) => t - times[i]);
+  const sorted = [...waits].sort((a, b) => a - b);
+  const usual = Math.max(sorted[Math.floor(sorted.length / 2)] ?? 0, 60_000); // at least a minute
   const knots: number[] = [];
-  const spans: { day: Day; n: number; from: number; to: number }[] = [];
   let s = LEAD;
-  for (const day of days) {
-    const n = Math.max(0, Math.min(day.count, shown - day.start));
-    if (!n) break;
-    if (spans.length) s += DAY_GAP;
-    const from = s;
-    for (let k = 0; k < n; k++) {
-      const u = UNIT * (0.6 + 0.8 * jitter(day.start + k));
-      knots.push(s + u / 2);
-      s += u;
-    }
-    spans.push({ day, n, from, to: s });
+  for (let i = 0; i < Math.min(shown, times.length); i++) {
+    if (i > 0) s += gapFor(waits[i - 1], usual) * (0.88 + 0.24 * jitter(i));
+    knots.push(s);
   }
-  return { knots, spans, end: s + LEAD / 2 };
+  return { knots, end: (knots[knots.length - 1] ?? 0) + LEAD };
 }
 
 /** The band the rope may use, in canvas px (below the intro panel, above the timeline bar). */
@@ -82,9 +73,9 @@ const popOut = (u: number) => 1 + 2.2 * (u - 1) ** 3 + 1.2 * (u - 1) ** 2;
 
 /**
  * The stars as one long rope wandering across the page, oldest first: each star is a small
- * overhand knot with the stargazer's avatar tied beside it. Days sit one after another with a
- * short stretch of bare rope; past the newest star a loose pile of spare rope waits for the next
- * ones. It opens on the newest stars and swipes (or wheels) back through the older ones.
+ * overhand knot with the stargazer's avatar tied beside it. Knots crowd together in a burst of
+ * stars and spread apart in a lull (`gapFor`); past the newest star a loose pile of spare rope
+ * waits for the next ones. It opens on the newest stars and swipes (or wheels) back through the older ones.
  *
  * It only redraws when something moved or changed, so an idle page costs nothing. Runs its own
  * loop until `dispose`.
@@ -98,9 +89,9 @@ export class StarRope {
   private y0 = 0; // the middle of the rope's wander
   private sway = 0; // how far it wanders up and down
   private stars: Star[] = [];
-  private days: Day[] = [];
+  private times: number[] = [];
   private shown = 0; // stars tied so far
-  private layoutCache: ReturnType<typeof ropeLayout> = { knots: [], spans: [], end: 0 };
+  private layoutCache: ReturnType<typeof ropeLayout> = { knots: [], end: 0 };
   private born = new Map<number, number>(); // when each knot was tied, for its pop-in
   private faces = new Map<number, { img: HTMLImageElement; cut: HTMLCanvasElement | null }>();
   private spots: { i: number; x: number; y: number }[] = []; // avatars drawn last frame, for hover
@@ -200,7 +191,7 @@ export class StarRope {
 
   setStars(stars: Star[]) {
     this.stars = stars;
-    this.days = groupDays(stars);
+    this.times = stars.map((s) => Date.parse(s.starred_at));
     this.relayout();
   }
 
@@ -238,7 +229,7 @@ export class StarRope {
   }
 
   private relayout() {
-    this.layoutCache = ropeLayout(this.days, this.shown);
+    this.layoutCache = ropeLayout(this.times, this.shown);
     this.dirty = true;
   }
 
@@ -342,7 +333,7 @@ export class StarRope {
   private draw(now: number) {
     const { ctx, t } = this;
     ctx.clearRect(0, 0, this.w, this.h);
-    if (!this.days.length) return;
+    if (!this.times.length) return;
     const { knots, end: endD } = this.layoutCache;
     const end = endD * t;
     const strip = this.strip;

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import stars from "../../../../public/stargazers.json";
-import { countAt, groupDays, ropeLayout } from "./rope";
+import { countAt, gapFor, ropeLayout } from "./rope";
+
+const HOUR = 36e5;
 
 describe("stargazer rope", () => {
   it("counts the stars given by a date", () => {
@@ -10,33 +12,26 @@ describe("stargazer rope", () => {
     expect(countAt(stars, Infinity)).toBe(stars.length);
   });
 
-  it("groups stars by day, keeping every star", () => {
-    const star = (starred_at: string) => ({
-      starred_at,
-      user: { login: "", avatar_url: "", html_url: "" },
-    });
-    const days = groupDays([
-      star("2026-01-01T09:00:00Z"),
-      star("2026-01-01T23:00:00Z"),
-      star("2026-01-04T01:00:00Z"),
-    ]);
-    expect(days).toEqual([
-      { date: "2026-01-01", start: 0, count: 2 },
-      { date: "2026-01-04", start: 2, count: 1 },
-    ]);
-    expect(groupDays(stars).reduce((n, d) => n + d.count, 0)).toBe(stars.length);
+  it("spaces knots by the wait between stars, on a log scale, capped", () => {
+    const usual = HOUR;
+    expect(gapFor(60_000, usual)).toBeLessThan(gapFor(usual, usual)); // a burst is tighter
+    expect(gapFor(33 * HOUR, usual)).toBeGreaterThan(gapFor(8 * HOUR, usual)); // a lull is looser
+    // Each doubling of the wait adds about the same rope, well past the usual wait.
+    const step = (h: number) => gapFor(2 * h * HOUR, usual) - gapFor(h * HOUR, usual);
+    expect(step(64)).toBeCloseTo(step(128), 1);
+    expect(gapFor(365 * 24 * HOUR, usual)).toBe(gapFor(10 * 365 * 24 * HOUR, usual)); // capped
   });
 
-  it("gives each star about the same rope, steady as stars arrive, and every day the same gap", () => {
-    const day = (start: number, count: number) => ({ date: "", start, count });
-    const { knots } = ropeLayout([day(0, 50)], 50);
-    expect(knots).toHaveLength(50);
-    const gaps = knots.slice(1).map((k, i) => k - knots[i]);
-    expect(Math.min(...gaps)).toBeGreaterThan(0);
-    expect(Math.max(...gaps) / Math.min(...gaps)).toBeLessThan(3); // uneven, not wild
-    expect(new Set(gaps.map((g) => g.toFixed(3))).size).toBeGreaterThan(10); // not uniform
-    expect(ropeLayout([day(0, 50)], 20).knots).toEqual(knots.slice(0, 20)); // knots never move
-    const { spans } = ropeLayout([day(0, 1), day(1, 1), day(2, 1)], 3);
-    expect(spans[1].from - spans[0].to).toBeCloseTo(spans[2].from - spans[1].to);
+  it("reads the same at any pace: only waits relative to the usual one matter", () => {
+    const times = [0, 1, 1.1, 3, 9, 9.2, 30, 31].map((h) => h * HOUR);
+    const slow = times.map((t) => t * 100);
+    expect(ropeLayout(slow, 8).knots).toEqual(ropeLayout(times, 8).knots);
+  });
+
+  it("never moves a knot as the rope replays", () => {
+    const times = stars.map((s) => Date.parse(s.starred_at));
+    const all = ropeLayout(times, times.length).knots;
+    expect(ropeLayout(times, 100).knots).toEqual(all.slice(0, 100));
+    expect(all.slice(1).every((k, i) => k > all[i])).toBe(true);
   });
 });
