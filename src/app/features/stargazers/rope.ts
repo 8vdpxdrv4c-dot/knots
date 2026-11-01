@@ -22,6 +22,9 @@ export type Band = { top: number; bottom: number };
 const PX = 32;
 const TIP = 5;
 const image = (src: string) => Object.assign(new Image(), { src });
+const picture = (name: string) => `/stargazers/${name}.png`;
+/** Every picture the rope draws, so the page can start loading them before the rope starts. */
+export const PICTURES = ["rope", "tip", ...KNOT_KINDS.map((k) => k.id)].map(picture);
 const AVATAR = 2.4; // avatar radius, in rope diameters: bigger than a knot, so people come first
 const SPARE = 7; // loop size in the loose pile of rope left for new stars, in rope diameters
 const ACCENT = "#b9522c";
@@ -68,11 +71,12 @@ export class StarRope {
   private drag: { x: number; scroll: number; moved: number; last: number; at: number } | null =
     null;
   private strip: HTMLCanvasElement | null = null; // the rope picture twice over, so slices never wrap
-  private knots = Object.fromEntries(
-    KNOT_KINDS.map((k) => [k.id, image(`/stargazers/${k.id}.png`)]),
-  ) as Record<KnotKind["id"], HTMLImageElement>;
+  private knots = Object.fromEntries(KNOT_KINDS.map((k) => [k.id, image(picture(k.id))])) as Record<
+    KnotKind["id"],
+    HTMLImageElement
+  >;
   private kinds: KnotKind[] = [];
-  private tip = image("/stargazers/tip.png");
+  private tip = image(picture("tip"));
   private dirty = true; // something changed: draw the next frame
   private last = 0;
   private frame = 0;
@@ -84,7 +88,7 @@ export class StarRope {
     private band: () => Band,
   ) {
     this.ctx = canvas.getContext("2d")!;
-    const rope = image("/stargazers/rope.png");
+    const rope = image(picture("rope"));
     rope.onload = () => {
       this.strip = document.createElement("canvas");
       this.strip.width = rope.width * 2;

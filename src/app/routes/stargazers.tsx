@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { StargazerRope } from "../features/stargazers";
+import { STARGAZER_PICTURES, StargazerRope } from "../features/stargazers";
 import { REPO_URL, SITE_NAME, STARGAZERS_DATA } from "../shared/site";
 import { iconButtonClass } from "../shared/ui/IconButton";
 import { CloseIcon, GitHubIcon } from "../shared/ui/icons";
@@ -7,6 +7,17 @@ import { CloseIcon, GitHubIcon } from "../shared/ui/icons";
 export const meta = () => [
   { title: `Stargazer rope · ${SITE_NAME}` },
   { name: "description", content: "Every GitHub star ties a knot on one rope." },
+];
+
+// Fetched with the page, not once the rope's script has started: the rope pictures and the feed.
+export const links = () => [
+  ...STARGAZER_PICTURES.map((href) => ({
+    rel: "preload",
+    as: "image",
+    href,
+    fetchPriority: "high",
+  })),
+  { rel: "preload", as: "fetch", href: STARGAZERS_DATA, crossOrigin: "anonymous" },
 ];
 
 export default function StargazersRoute() {
