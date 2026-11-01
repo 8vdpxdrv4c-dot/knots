@@ -1,8 +1,10 @@
-// Writes public/stargazers.json: fake stars in GitHub's stargazers API shape over 90 days: about
+// Writes public/stargazers.json: fake stars in the stargazer feed over 90 days, marked as mock so the
+// first real run of tools/stargazers.mjs replaces them. About
 // 10 a day (fewer at weekends), a few big days of 50 or so from a launch post or a share, and a
 // few quiet stretches with none.
 // Run: node tools/mock-stargazers.mjs
 import { writeFileSync } from "node:fs";
+import { encode } from "./stargazers.mjs";
 
 let seed = 42;
 const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
@@ -73,24 +75,15 @@ for (let d = 0; d < days; d++) {
     while (seen.has(login));
     seen.add(login);
     const id = 1000 + Math.floor(rand() * 9_000_000);
-    stars.push({
-      starred_at: new Date(start + (d + rand()) * DAY).toISOString().slice(0, 19) + "Z",
-      user: {
-        login,
-        avatar_url: `https://avatars.githubusercontent.com/u/${id}?v=4`,
-        html_url: `https://github.com/${login}`,
-      },
-    });
+    stars.push({ login, id, time: Math.floor(start + (d + rand()) * DAY) });
   }
 }
-stars.sort((a, b) => a.starred_at.localeCompare(b.starred_at));
+stars.sort((a, b) => a.time - b.time);
 // Two quiet weeks before the newest 5 stars: everything older moves 14 days back, so the rope shows
 // what a long lull looks like right where it opens.
-for (const star of stars.slice(0, -5))
-  star.starred_at =
-    new Date(Date.parse(star.starred_at) - 14 * DAY).toISOString().slice(0, 19) + "Z";
+for (const star of stars.slice(0, -5)) star.time -= 14 * DAY;
 writeFileSync(
   new URL("../public/stargazers.json", import.meta.url),
-  JSON.stringify(stars, null, 1) + "\n",
+  encode(stars).replace('{"v":1,', '{"v":1,"mock":true,'),
 );
 console.log(`${stars.length} stars`);

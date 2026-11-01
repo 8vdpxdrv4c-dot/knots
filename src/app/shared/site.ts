@@ -10,6 +10,6 @@ export const knotPath = (id: string) => `/knots/${encodeURIComponent(id)}/`;
 export const knotImagePath = (id: string) => `/og/${encodeURIComponent(id)}.jpg`;
 export const REPO_URL = "https://github.com/behnamazimi/knots";
 export const STARGAZERS_PATH = "/stargazers/";
-/** The stars on the stargazer rope. shortcut: mock data; point it at the real feed once there is one. */
+/** The stars on the stargazer rope, written by tools/stargazers.mjs (mock data until its first run). */
 export const STARGAZERS_DATA = "/stargazers.json";
 export const absoluteUrl = (path: string) => new URL(path, SITE_URL).href;

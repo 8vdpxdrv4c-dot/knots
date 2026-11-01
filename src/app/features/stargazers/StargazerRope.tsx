@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useMountEffect } from "../../shared/hooks";
 import { PauseIcon, PlayIcon, SearchIcon } from "../../shared/ui/icons";
+import { type Feed, decodeFeed } from "./feed";
 import { type Star, StarRope, countAt } from "./rope";
 import styles from "./stargazers.module.css";
 
@@ -14,7 +15,7 @@ const month = (t: number) =>
 
 /**
  * Every GitHub star as a knot on one rope, with a timeline that replays how the stars piled up.
- * `src` is a JSON array in the shape of GitHub's stargazers API.
+ * `src` is the stargazer feed (see `Feed`), refreshed by the stargazers GitHub Action.
  */
 export function StargazerRope({ src, repoUrl }: { src: string; repoUrl: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -23,6 +24,7 @@ export function StargazerRope({ src, repoUrl }: { src: string; repoUrl: string }
   const rope = useRef<StarRope>(null);
   const raf = useRef(0);
   const [stars, setStars] = useState<Star[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [hover, setHover] = useState<{ star: Star; x: number; y: number } | null>(null);
@@ -64,13 +66,13 @@ export function StargazerRope({ src, repoUrl }: { src: string; repoUrl: string }
     });
     const r = new StarRope(canvas.current!, band);
     rope.current = r;
-    // shortcut: mock data from a static file; swap `src` for the real stargazers feed later.
     fetch(src)
-      .then((res) => res.json() as Promise<Star[]>)
-      .then((list) => {
-        list.sort((x, y) => x.starred_at.localeCompare(y.starred_at));
+      .then((res) => res.json() as Promise<Feed>)
+      .then((feed) => {
+        const list = decodeFeed(feed);
         r.setStars(list);
         setStars(list);
+        setLoaded(true);
         if (!list.length) return;
         if (matchMedia("(prefers-reduced-motion: reduce)").matches)
           seek(Date.parse(list[list.length - 1].starred_at), list);
@@ -160,7 +162,7 @@ export function StargazerRope({ src, repoUrl }: { src: string; repoUrl: string }
       <section ref={intro} className={styles.hud}>
         <p className={styles.eyebrow}>Stargazer rope</p>
         <h1 className={styles.total}>
-          <strong>{stars.length ? count.toLocaleString() : "…"}</strong> knots tied
+          <strong>{loaded ? count.toLocaleString() : "…"}</strong> knots tied
         </h1>
         <div
           className={styles.goal}
@@ -259,7 +261,7 @@ export function StargazerRope({ src, repoUrl }: { src: string; repoUrl: string }
         </div>
         <p className={styles.count}>
           <strong>{count} ★</strong>
-          <span>{stars.length ? month(time) : "…"}</span>
+          <span>{stars.length ? month(time) : loaded ? "Be the first" : "…"}</span>
         </p>
         <a className={styles.cta} href={repoUrl} target="_blank" rel="noopener">
           ★ Tie knot #{(stars.length + 1).toLocaleString()}

@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
-import stars from "../../../../public/stargazers.json";
-import { countAt, gapFor, ropeLayout } from "./rope";
+import { countAt, gapFor, jitter, ropeLayout } from "./rope";
 
 const HOUR = 36e5;
+// 300 stars an uneven while apart: bursts of minutes to lulls of days.
+const times = [0];
+for (let i = 1; i < 300; i++) times.push(times[i - 1] + 2 ** (jitter(i, 7) * 12) * 60_000);
+const user = { login: "", avatar_url: "", html_url: "" };
+const stars = times.map((t) => ({ starred_at: new Date(t).toISOString(), user }));
 
 describe("stargazer rope", () => {
   it("counts the stars given by a date", () => {
@@ -29,7 +33,6 @@ describe("stargazer rope", () => {
   });
 
   it("never moves a knot as the rope replays", () => {
-    const times = stars.map((s) => Date.parse(s.starred_at));
     const all = ropeLayout(times, times.length).knots;
     expect(ropeLayout(times, 100).knots).toEqual(all.slice(0, 100));
     expect(all.slice(1).every((k, i) => k > all[i])).toBe(true);

@@ -1,0 +1,66 @@
+# Ties a knot on the stargazer rope for every new GitHub star: refreshes public/stargazers.json,
+# deploys the site to Cloudflare Pages and commits the feed. Runs when someone stars the repo, and
+# once a day to catch anything a star event missed.
+# Needs repository secrets CLOUDFLARE_API_TOKEN (Pages: Edit) and CLOUDFLARE_ACCOUNT_ID.
+name: Stargazers
+
+on:
+  watch:
+    types: [started]
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+# One run at a time; stars that land mid-run queue a single follow-up run that picks them all up.
+concurrency:
+  group: stargazers
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  rope:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Fetch stargazers
+        run: node tools/stargazers.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Any new knots?
+        id: feed
+        run: git diff --quiet public/stargazers.json || echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - if: steps.feed.outputs.changed
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - if: steps.feed.outputs.changed
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - if: steps.feed.outputs.changed
+        run: pnpm install --frozen-lockfile
+
+      # Deploy before committing: if the push fails, the next run still sees the change and redeploys.
+      - if: steps.feed.outputs.changed
+        name: Deploy
+        run: pnpm deploy:pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - if: steps.feed.outputs.changed
+        name: Commit the feed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Tie the latest stargazer knots" public/stargazers.json
+          git pull --rebase
+          git push

@@ -89,6 +89,7 @@ export class StarRope {
   private y0 = 0; // the middle of the rope's wander
   private sway = 0; // how far it wanders up and down
   private stars: Star[] = [];
+  private loaded = false; // no rope until the feed arrives, then at least the bare rope and spare
   private times: number[] = [];
   private shown = 0; // stars tied so far
   private layoutCache: ReturnType<typeof ropeLayout> = { knots: [], end: 0 };
@@ -191,6 +192,7 @@ export class StarRope {
 
   setStars(stars: Star[]) {
     this.stars = stars;
+    this.loaded = true;
     this.times = stars.map((s) => Date.parse(s.starred_at));
     this.relayout();
   }
@@ -235,6 +237,7 @@ export class StarRope {
 
   private layout() {
     this.dpr = devicePixelRatio || 1;
+    if (!this.w) this.scroll = -this.canvas.clientWidth / 2; // first size: the rope starts mid-screen
     this.w = this.canvas.clientWidth;
     this.h = this.canvas.clientHeight;
     this.canvas.width = this.w * this.dpr;
@@ -260,7 +263,8 @@ export class StarRope {
     this.fit();
     const before = this.scroll;
     const end = this.layoutCache.end * this.t;
-    const min = -this.t * 4;
+    // The rope starts at the middle of the screen and grows right until it fills it.
+    const min = -this.w / 2;
     const max = Math.max(min, end + SPARE * 4.4 * this.t - this.w);
     if (this.target !== null) {
       const goal = Math.min(Math.max(this.target, min), max);
@@ -333,7 +337,7 @@ export class StarRope {
   private draw(now: number) {
     const { ctx, t } = this;
     ctx.clearRect(0, 0, this.w, this.h);
-    if (!this.times.length) return;
+    if (!this.loaded) return;
     const { knots, end: endD } = this.layoutCache;
     const end = endD * t;
     const strip = this.strip;
