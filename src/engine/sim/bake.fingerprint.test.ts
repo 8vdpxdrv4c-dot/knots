@@ -11,6 +11,7 @@ const FINGERPRINTS: Record<string, string> = {
   "clove-hitch": "e47109ab703c",
   zeppelin: "1d60633c1b56",
   "square-knot": "5ad8a78873cf",
+  "poachers-knot": "e896f68b2854",
 };
 
 describe("bake fingerprint", () => {

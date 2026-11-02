@@ -1,14 +1,18 @@
 // Shoots each knot's finished state: public/og/<id>.jpg, 1200×630, used as the share preview
 // (og:image) and the picker card. Needs the dev server: `pnpm dev`, then `pnpm thumbs` (or
-// `pnpm thumbs http://localhost:5177`). Run it again after adding a knot or changing how one ends.
+// `pnpm thumbs http://localhost:5177`; `--knot=<id>` shoots one knot, `--headed` shows the browser). Run it again after adding a knot or changing how one ends.
 import { mkdirSync } from "node:fs";
 import { chromium } from "@playwright/test";
 
-const base = process.argv[2] ?? "http://localhost:5173";
+const args = process.argv.slice(2);
+const flag = (name) => args.find((a) => a.startsWith(`--${name}`))?.split("=")[1] ?? false;
+const base = args.find((a) => !a.startsWith("--")) ?? "http://localhost:5173";
+const only = flag("knot"); // --knot=<id>: shoot just that knot
+const headed = args.includes("--headed"); // watch the browser draw
 const out = new URL("../public/og/", import.meta.url);
 mkdirSync(out, { recursive: true });
 
-const browser = await chromium.launch();
+const browser = await chromium.launch({ headless: !headed });
 // Baking runs in a small window, which headless Chromium draws quickly in software; the shot is
 // taken in a big one (scene scale follows the window height), cropped 600×315 around the knot at
 // 2× pixels: the 1200×630 Open Graph size. The renderer caps its pixel ratio at 2.
@@ -23,7 +27,7 @@ const ids = await page.$$eval("dialog a[href^='/knots/']", (links) =>
   links.map((a) => decodeURIComponent(new URL(a.href).pathname.split("/")[2])),
 );
 
-for (const id of ids) {
+for (const id of ids.filter((id) => !only || id === only)) {
   await page.setViewportSize(SMALL);
   await page.goto(`${base}/knots/${id}/`);
   await page.waitForSelector("[data-baked=true]", { timeout: 120_000 });
@@ -35,7 +39,7 @@ for (const id of ids) {
   await page.waitForTimeout(2000);
   // Centre the crop on the knot: the column and the row with the most rope in them.
   const shot = (await page.screenshot({ timeout: 120_000 })).toString("base64");
-  const [cx, cy] = await page.evaluate(async (png) => {
+  const [cx, cy, right] = await page.evaluate(async (png) => {
     const img = await createImageBitmap(await (await fetch(`data:image/png;base64,${png}`)).blob());
     const ctx = new OffscreenCanvas(img.width, img.height).getContext("2d");
     ctx.drawImage(img, 0, 0);
@@ -67,9 +71,16 @@ for (const id of ids) {
       }
       return at;
     };
-    return [peak(cols, 160) / devicePixelRatio, peak(rows, 160) / devicePixelRatio];
+    const last = cols.findLastIndex((n) => n > 0);
+    return [
+      peak(cols, 160) / devicePixelRatio,
+      peak(rows, 160) / devicePixelRatio,
+      last / devicePixelRatio,
+    ];
   }, shot);
-  const x = Math.min(Math.max(cx - W / 2, 0), BIG.width - W);
+  let x = Math.min(Math.max(cx - W / 2, 0), BIG.width - W);
+  // A rope that ends in the picture (a loop, a tail) must not be cut off: slide right to fit it, but keep the knot in.
+  if (right < BIG.width - 1) x = Math.min(Math.max(x, right + 20 - W), cx - 100, BIG.width - W);
   const y = Math.min(Math.max(cy - H / 2, 0), BIG.height - H);
   const path = new URL(`${id}.jpg`, out).pathname;
   await page.screenshot({
