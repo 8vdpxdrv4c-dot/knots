@@ -51,6 +51,28 @@ export function particleCount(rope: RopeDef): number {
   return Math.ceil(rope.length / (0.8 * rope.radius)) + 1;
 }
 
+/**
+ * A hand the recorder moves live: pulls one particle toward `target` like a guide. From
+ * `release` on, it lets go over the same moment a guide takes at its last key.
+ */
+export interface Hand {
+  index: number;
+  target: Vec3;
+  force?: number;
+  compliance?: number;
+  release?: number;
+}
+
+/** Everything that carries over from one frame to the next, to go back to (the recorder's undo). */
+export interface SimState {
+  x: number[];
+  v: number[];
+  q: number[];
+  om: number[];
+  time: number;
+  flip: boolean;
+}
+
 interface GuideState {
   def: Guide;
   index: number;
@@ -106,6 +128,8 @@ export class RopeSim {
   private readonly maxRadius: number;
   private readonly props: PropState[];
   private readonly guides: GuideState[];
+  /** Live hands (the recorder); a knot's bake never has any. */
+  readonly hands = new Set<Hand>();
 
   constructor(
     knot: KnotDef,
@@ -179,6 +203,22 @@ export class RopeSim {
         (o) => o !== g && o.index === g.index && Math.abs(o.times[0] - end) < 0.05,
       );
     }
+  }
+
+  /** The moving state, as plain numbers so it can be stored. Hands are the caller's to keep. */
+  save(): SimState {
+    const { x, v, q, om, time, flip } = this;
+    return { x: [...x], v: [...v], q: [...q], om: [...om], time, flip };
+  }
+
+  /** Goes back to a saved state of a simulation of the same ropes. */
+  restore(state: SimState): void {
+    this.x.set(state.x);
+    this.v.set(state.v);
+    this.q.set(state.q);
+    this.om.set(state.om);
+    this.time = state.time;
+    this.flip = state.flip;
   }
 
   /** Advances one frame (1 / FPS seconds). */
@@ -326,29 +366,52 @@ export class RopeSim {
   }
 
   private solveGuides(): void {
-    const { x, w, wHeld } = this;
-    wHeld.set(w);
+    this.wHeld.set(this.w);
     for (const g of this.guides) {
       if (!g.target) continue;
-      const i = g.index * 3;
       // Over the last moments the grip softens, like fingers opening, so tension eases out.
       const left = (g.times[g.times.length - 1] - this.time) / RELEASE;
       const grip = g.handsOff ? 1 : Math.min(1, Math.max(left, 0)) ** 2 + 1e-6;
-      const alpha = (g.def.compliance ?? GUIDE_COMPLIANCE) / grip / (H * H);
-      let k = w[g.index] / (w[g.index] + alpha);
-      const dx = g.target[0] - x[i];
-      const dy = g.target[1] - x[i + 1];
-      const dz = g.target[2] - x[i + 2];
-      // A hand pulls with limited force: a target the rope cannot reach makes the guide lag
-      // behind it instead of yanking the whole rope.
-      const reach = (g.def.force ?? GUIDE_MAX_FORCE) * w[g.index] * H * H;
-      const step = Math.hypot(dx, dy, dz) * k;
-      if (step > reach) k *= reach / step;
-      else wHeld[g.index] = (w[g.index] * alpha) / (w[g.index] + alpha);
-      x[i] += dx * k;
-      x[i + 1] += dy * k;
-      x[i + 2] += dz * k;
+      this.pull(g.index, g.target, grip, g.def.compliance, g.def.force);
     }
+    for (const hand of this.hands) {
+      const left = hand.release === undefined ? 1 : (hand.release - this.time) / RELEASE;
+      if (left <= 0) this.hands.delete(hand);
+      else
+        this.pull(
+          hand.index,
+          hand.target,
+          Math.min(1, left) ** 2 + 1e-6,
+          hand.compliance,
+          hand.force,
+        );
+    }
+  }
+
+  /** One guide's pull on particle p toward `target`, with `grip` 1 for a firm hand and near 0 letting go. */
+  private pull(
+    p: number,
+    target: Vec3,
+    grip: number,
+    compliance = GUIDE_COMPLIANCE,
+    force = GUIDE_MAX_FORCE,
+  ): void {
+    const { x, w, wHeld } = this;
+    const i = p * 3;
+    const alpha = compliance / grip / (H * H);
+    let k = w[p] / (w[p] + alpha);
+    const dx = target[0] - x[i];
+    const dy = target[1] - x[i + 1];
+    const dz = target[2] - x[i + 2];
+    // A hand pulls with limited force: a target the rope cannot reach makes the guide lag
+    // behind it instead of yanking the whole rope.
+    const reach = force * w[p] * H * H;
+    const step = Math.hypot(dx, dy, dz) * k;
+    if (step > reach) k *= reach / step;
+    else wHeld[p] = (w[p] * alpha) / (w[p] + alpha);
+    x[i] += dx * k;
+    x[i + 1] += dy * k;
+    x[i + 2] += dz * k;
   }
 
   /**

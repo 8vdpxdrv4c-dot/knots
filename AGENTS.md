@@ -17,6 +17,7 @@ All paths below are under `src/`.
 | Playback logic (play, seek, steps, loop, bake edge)    | `engine/playback/player.ts` + its test                                                               | sim, render        |
 | Player UI, picker, tuner                               | the feature folder in `app/features/`, `app/screens/KnotScreen.tsx`                                  | sim, render        |
 | Page titles, share previews, URLs, the domain          | `app/shared/site.ts`, `app/shared/meta.ts`, `app/routes/`                                            | engine             |
+| Knot recorder (tie a knot with the mouse, get guides)  | `engine/record/recording.ts`, `engine/render/recorder.ts`, `app/features/recorder/`                  | sim internals      |
 
 Run `pnpm test` after anything in `engine/`. Look at UI and rendering changes in the browser (`pnpm dev`), since no unit test covers how it looks; `pnpm test:e2e` checks the built site.
 
@@ -43,9 +44,10 @@ src/engine/   framework-free: no React, no DOM framework, nothing from src/app
   playback/   Timeline (baked-frame store, sampling), Player (playback state store)
   render/     stage (renderer, lights, table, camera, OrbitControls, view reset), ropeMesh,
               ropeMaterial, KnotViewer (render loop: ticks the player, draws the ropes)
+  record/     recording.ts: recorder presets, hand track → Guide, recording → KnotDef and code
   session.ts  createKnotSession: starts a knot's bake into a Player
 src/app/      React Router app
-  root.tsx, routes.ts, routes/   "/" (first knot), "/knots/:id", "*" (not found)
+  root.tsx, routes.ts, routes/   "/" (first knot), "/knots/:id", "/recorder", "*" (not found)
   screens/KnotScreen.tsx         composes the features for one knot's page
   features/<name>/               viewer, player, picker, tuner; each exports from its index.ts
   shared/                        site.ts (domain, URLs), meta.ts (title/OG tags), hooks, ui/ (icons, IconButton)
@@ -84,6 +86,7 @@ Frames are baked in a Web Worker while the user watches; playback waits at the e
 - `engine/playback/timeline.ts` – main-thread frame store, `counts` per rope, `sample(time)`. `player.ts` – playback state and actions.
 - `engine/render/ropeMesh.ts` – three-strand laid-rope geometry rebuilt around the centreline every frame, plus cut ends/sleeves. `ropeMaterial.ts` – rope material and textures. `stage.ts` – renderer, camera, lights, table, `createPropMesh`. `viewer.ts` – `KnotViewer`.
 - `app/features/tuner/` – material playground: add `?tune` to any knot page for sliders over `DEFAULT_PHYSICS` (in `rope.ts`); letting go writes the values to the URL (`&bend=0.01&mass=2.2`), which re-bakes the knot.
+- `/recorder` – the knot playground: click the rope to put a hand on it (it holds until let go); with time stopped, drag hands' dots to plan a move (W/S for height), then Play move takes them all there together. Each hand is recorded as a guide (`RopeSim.hands` are the live hands, `RopeSim.save/restore` back exact undo). Replay all re-runs the guides as the bake would; Copy code gives a `KnotDef` to tidy into `src/engine/knots/`. The state is kept in localStorage.
 - `app/shared/site.ts` – `SITE_URL` (the custom domain; the only place it lives), `knotPath`, `knotImagePath`.
 - `wrangler.toml`, `public/_headers` – Cloudflare Pages project and asset caching.
 

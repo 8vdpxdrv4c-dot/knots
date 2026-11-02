@@ -117,6 +117,8 @@ export function createStage(canvas: HTMLCanvasElement) {
   return {
     renderer,
     scene,
+    camera,
+    controls,
     render(now: number) {
       stepReset(now);
       controls.update();

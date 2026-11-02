@@ -4,7 +4,7 @@ import { createRopeMaterial } from "./ropeMaterial";
 import { RopeMesh } from "./ropeMesh";
 import { createPropMesh, createStage, type Stage } from "./stage";
 
-const NATURAL_ROPE = "#c39f6a";
+export const NATURAL_ROPE = "#c39f6a";
 
 /**
  * Draws a knot session on a canvas: owns the three.js stage and the render loop, ticks the
