@@ -2,7 +2,8 @@
 # redraws the README's rope (.github/stargazer-rope.svg, linked from README.md with ?v=<its hash> so
 # GitHub doesn't show a cached one), deploys the site to Cloudflare Pages and commits all three.
 # Runs when someone stars the repo, and once a day to catch anything a star event missed.
-# Needs repository secrets CLOUDFLARE_API_TOKEN (Pages: Edit) and CLOUDFLARE_ACCOUNT_ID.
+# Needs repository secrets CLOUDFLARE_API_TOKEN (Pages: Edit), CLOUDFLARE_ACCOUNT_ID and PUSH_TOKEN
+# (a fine-grained personal access token of the repo admin, with Contents: read and write on this repo).
 name: Stargazers
 
 on:
@@ -24,7 +25,10 @@ jobs:
   rope:
     runs-on: ubuntu-latest
     steps:
+      # main only takes pull requests; a token owned by the repo admin (who may bypass the rule) can push.
       - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.PUSH_TOKEN }}
 
       - name: Fetch stargazers
         run: node tools/stargazers.mjs
