@@ -2,10 +2,10 @@
 // pictures, each avatar tied on, the spare pile and an empty spot for the next star. GitHub shows
 // README images through a proxy that blocks outside links, so every picture is embedded.
 // The stargazers workflow renders it after each new star and commits it next to the feed.
-// Run: node tools/readme-rope.mjs                 public/stargazers.json → .github/stargazer-rope.svg
+// Run: node tools/readme-rope.mjs                 public/stargazers.json → .github/stargazer-rope-<hash>.svg
 //      node tools/readme-rope.mjs --mock          mock stars → tools/out/stargazer-rope.svg, to review
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { jitter, knotFor, ropeLayout } from "../src/app/features/stargazers/layout.ts";
 import { decode } from "./stargazers.mjs";
@@ -209,16 +209,20 @@ ${you}
 <text x="${W - 24}" y="40" class="ink" font-size="14" font-weight="700" text-anchor="end">★ Star the repo to tie knot #${(total + 1).toLocaleString("en")}</text>
 </svg>
 `;
-const path = new URL(out, root);
-mkdirSync(dirname(path.pathname), { recursive: true });
-writeFileSync(path, svg);
-console.log(`${out}: ${shown.length} of ${total} stars, ${Math.round(svg.length / 1024)} KB`);
-
-// GitHub caches README images, so the README links a new address whenever the picture changes.
+// GitHub caches README images by address, so each picture gets a new file name (its hash) and the
+// README links that; the old ones are deleted.
+let file = out;
 if (!mock) {
   const version = createHash("sha1").update(svg).digest("hex").slice(0, 8);
+  file = out.replace(".svg", `-${version}.svg`);
+  for (const old of readdirSync(new URL(".github/", root)))
+    if (/^stargazer-rope.*\.svg$/.test(old)) rmSync(new URL(`.github/${old}`, root));
   const readme = new URL("README.md", root);
   const before = readFileSync(readme, "utf8");
-  const after = before.replace(/\.github\/stargazer-rope\.svg(\?v=\w+)?/g, `${out}?v=${version}`);
+  const after = before.replace(/\.github\/stargazer-rope[\w-]*\.svg(\?v=\w+)?/g, file);
   if (after !== before) writeFileSync(readme, after);
 }
+const path = new URL(file, root);
+mkdirSync(dirname(path.pathname), { recursive: true });
+writeFileSync(path, svg);
+console.log(`${file}: ${shown.length} of ${total} stars, ${Math.round(svg.length / 1024)} KB`);
