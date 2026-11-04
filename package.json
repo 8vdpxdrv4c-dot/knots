@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "thumbs": "node tools/thumbs.mjs",
-    "baked": "vite tools --port 5178"
+    "baked": "vite tools --port 5178",
+    "film": "node tools/film.mjs"
   },
   "dependencies": {
     "isbot": "^5",

@@ -1,0 +1,65 @@
+// Renders knots as MP4 films for sharing: videos/<id>.mp4. Real rope, scripted camera,
+// step captions. Run: node tools/film.mjs bowline zeppelin   (or --all)
+// Options: --size=1920x1080  --fps=30  --speed=1 (tying speed)  --hold=3.2 (seconds on the finished
+// knot)  --headless (software GL: slow). Needs Google Chrome for fast GPU drawing, and macOS to encode.
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { chromium } from "@playwright/test";
+import { createServer } from "vite";
+
+const args = process.argv.slice(2);
+const flag = (name, fallback) =>
+  args.find((a) => a.startsWith(`--${name}=`))?.split("=")[1] ?? fallback;
+const [W, H] = flag("size", "1920x1080").split("x").map(Number);
+const fps = Number(flag("fps", 30));
+const speed = flag("speed", "1");
+const hold = flag("hold", "3.2");
+const headless = args.includes("--headless");
+const root = new URL(".", import.meta.url).pathname;
+const outDir = `${root}out/film/`; // frames and the encoder, thrown away
+const videoDir = `${root}../videos/`; // the finished MP4s (git-ignored)
+mkdirSync(outDir, { recursive: true });
+mkdirSync(videoDir, { recursive: true });
+
+const server = await createServer({ root, server: { port: 5180 } });
+await server.listen();
+const browser = await chromium
+  .launch({ channel: headless ? undefined : "chrome", headless })
+  .catch(() => chromium.launch({ headless }));
+const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
+page.on("pageerror", (e) => console.error(e));
+
+let ids = args.filter((a) => !a.startsWith("--"));
+if (args.includes("--all") || !ids.length) {
+  const { knots } = await server.ssrLoadModule("/../src/engine/knots/index.ts");
+  ids = knots.map((k) => k.id);
+}
+
+const encoder = `${outDir}encode-video`;
+if (!existsSync(encoder))
+  execFileSync("swiftc", ["-O", `${root}encode-video.swift`, "-o", encoder], { stdio: "inherit" });
+
+for (const id of ids) {
+  const url = `http://localhost:5180/film.html?knot=${id}&w=${W}&h=${H}&fps=${fps}&speed=${speed}&hold=${hold}`;
+  await page.goto(url, { waitUntil: "commit" }); // the bake blocks "load"
+  const film = await (
+    await page.waitForFunction(() => window.film, null, { timeout: 600_000 })
+  ).jsonValue();
+  const frames = `${outDir}${id}-frames/`;
+  rmSync(frames, { recursive: true, force: true });
+  mkdirSync(frames, { recursive: true });
+  for (let i = 0; i < film.frames; i++) {
+    const data = await page.evaluate((n) => window.renderFrame(n), i);
+    writeFileSync(
+      `${frames}${String(i).padStart(5, "0")}.jpg`,
+      Buffer.from(data.split(",")[1], "base64"),
+    );
+    if (i % 60 === 0) console.log(`${id}: frame ${i}/${film.frames}`);
+  }
+  const mp4 = `${videoDir}${id}.mp4`;
+  execFileSync(encoder, [frames, String(fps), mp4], { stdio: "inherit" });
+  rmSync(frames, { recursive: true, force: true });
+  console.log(mp4, `(${film.seconds.toFixed(1)} s)`);
+}
+await browser.close();
+await server.close();
