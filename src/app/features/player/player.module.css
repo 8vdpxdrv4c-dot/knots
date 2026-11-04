@@ -190,7 +190,7 @@
 @media (max-width: 560px) {
   .bar {
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 10px 6px;
   }
 
   .track {
@@ -200,5 +200,46 @@
   .clock {
     margin-right: auto;
     text-align: left;
+  }
+}
+
+/* Matches the reset-view button beside it. */
+.shareWrap {
+  position: relative;
+  flex: none;
+}
+
+.share {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+}
+
+.toast {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 13px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* On the narrowest phones the timecode makes way, so the buttons stay on one row. */
+@media (max-width: 350px) {
+  .clock {
+    display: none;
+  }
+
+  .speed {
+    margin-right: auto;
   }
 }

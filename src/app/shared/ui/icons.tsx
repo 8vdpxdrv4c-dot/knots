@@ -47,3 +47,14 @@ export const CopyIcon = icon("M9 9h10v11H9zM6 15H5V4h10v1");
 export const DragIcon = icon("M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01");
 /** A chevron pointing up: fold away. */
 export const FoldIcon = icon("M6 15l6-6 6 6");
+/** An arrow leaving a tray: share. */
+export const ShareIcon = icon("M12 15V4M8 8l4-4 4 4M5 13v6h14v-6");
+export const CheckIcon = icon("M5 12.5l4.5 4.5L19 7");
+/** An open eye: the controls are showing. */
+export const EyeIcon = icon(
+  "M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z",
+);
+/** A struck-through eye: the controls are hidden. */
+export const EyeOffIcon = icon(
+  "M3 12s3.5-6.5 9-6.5c1.4 0 2.7.4 3.8 1M21 12s-3.5 6.5-9 6.5c-1.4 0-2.7-.4-3.8-1M4 4l16 16M10 10a2.5 2.5 0 0 0 3.5 3.5",
+);

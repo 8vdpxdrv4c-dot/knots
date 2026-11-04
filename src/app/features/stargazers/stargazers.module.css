@@ -352,3 +352,100 @@
     text-align: center;
   }
 }
+
+.pillFaces {
+  display: flex;
+  margin-left: 8px;
+}
+
+.pillFaces img,
+.pillFaces i {
+  width: 20px;
+  height: 20px;
+  margin-left: -6px;
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  background: var(--line);
+  box-sizing: border-box;
+}
+
+@media (max-width: 560px) {
+  .pillFaces,
+  .rope {
+    display: none;
+  }
+}
+
+/* Sits just above the playback bar. */
+.prompt {
+  position: fixed;
+  left: 50%;
+  bottom: 170px;
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 32px));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  backdrop-filter: var(--glass);
+  box-shadow: var(--shadow);
+}
+
+.prompt p {
+  margin: 0;
+}
+
+.prompt div {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.prompt a,
+.prompt button {
+  white-space: nowrap;
+  font: inherit;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.prompt button {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.prompt .promptStar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--paper);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.promptStar :global(.icon) {
+  width: 16px;
+  height: 16px;
+}
+
+/* The playback bar is taller on a phone. */
+@media (max-width: 560px) {
+  .prompt {
+    bottom: 240px;
+    padding: 12px;
+  }
+
+  .prompt div {
+    gap: 10px;
+  }
+}

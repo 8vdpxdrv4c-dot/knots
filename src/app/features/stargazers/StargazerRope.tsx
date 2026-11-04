@@ -4,6 +4,7 @@ import { knotPath } from "../../shared/site";
 import { PauseIcon, PlayIcon, SearchIcon } from "../../shared/ui/icons";
 import { type Feed, decodeFeed } from "./feed";
 import { knotFor } from "./layout";
+import { markPromptSeen } from "./prompt";
 import { type Star, StarRope, countAt } from "./rope";
 import styles from "./stargazers.module.css";
 
@@ -69,6 +70,7 @@ export function StargazerRope({ src, repoUrl }: { src: string; repoUrl: string }
   };
 
   useMountEffect(() => {
+    markPromptSeen(); // Someone on the rope page needs no nudge toward it.
     // The rope runs the full width, below the intro panel and above the timeline bar.
     const band = () => ({
       top: intro.current!.getBoundingClientRect().bottom + 8,
