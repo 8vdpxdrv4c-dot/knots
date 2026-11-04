@@ -32,7 +32,7 @@ Run `pnpm test` after anything in `engine/`. Look at UI and rendering changes in
 - `pnpm preview` – serve `build/client` the way Cloudflare Pages does (after `pnpm build`)
 - `pnpm deploy:pages` / `pnpm deploy:pages:preview` – build and upload to Cloudflare Pages (production / a preview branch); needs `wrangler login` once. Not `pnpm deploy`: that name is a pnpm built-in.
 - `pnpm thumbs [url]` – with a dev server running, shoot every knot's finished state to `public/og/<id>.jpg` (1200×630: the share image and the picker card). Rerun after adding a knot or changing how one ends; a test fails if an image is missing.
-- `pnpm film [id… | --all]` – render knots as MP4s for sharing into `videos/` (git-ignored; real rope, scripted camera, step captions; frames drawn by `tools/film.ts`, encoded by macOS's own encoder; needs Google Chrome and macOS). `--size=1080x1080`, `--speed`, `--hold`.
+- `pnpm film [id… | --all]` – render knots as MP4s for sharing into `videos/` (git-ignored; real rope, scripted camera, step captions; frames drawn by `tools/film.ts`, encoded by macOS's own encoder; needs Google Chrome and macOS). `--cut=hands,cinch`, `--size=1080x1080`, `--speed`, `--hold`.
 - `pnpm baked` – serve `tools/` for the top-view debugging page (see "Checking a change with one bake")
 
 All of tests, typecheck, oxlint and oxfmt must pass before committing.
@@ -131,10 +131,11 @@ KNOT=bowline TIMES=13.3,13.9 ATS=0.272,0.95,1 CROSS=13.9,18 npx vitest run tools
 
 `pnpm film bowline` (or `--all`) writes `videos/<id>.mp4` (git-ignored, so the files stay out of the repo's history): 1920×1080 H.264, no audio, ~20 s, ready for X. Nothing is faked: the page `tools/film.html` + `film.ts` bakes the knot, then draws each frame on request with the real `RopeMesh` and `createStage`, so the film's clock is exact and the camera is a script, not a mouse.
 
+- **Cuts:** `--cut=full` (default, the captioned tutorial, `<id>.mp4`), `--cut=hands` (`<id>-hands.mp4`, ~11 s at 1.8× with "No keyframes." and glowing dots where each guide holds the rope; for developers) and `--cut=cinch` (`<id>-cinch.mp4`, ~5–7 s close-up of the last pull; for everyone). `--cut=all` or a comma list renders several. Each cut re-bakes the knot.
 - **Camera:** the `keys` array in `film.ts` (film time, azimuth°, elevation°, distance); a cardinal spline carries the camera through them, and the target drifts from the table's middle onto the knot's densest part of the finished rope (`knotCentre`).
 - **Captions:** the step title and `n / total` come from `knot.steps`; the title top left and the address on the final hold are drawn on a 2D canvas over the frame (`overlay`).
 - **Encoding:** `tools/encode-video.swift` (AVFoundation, built on first use into `tools/out/film/`), because there is no ffmpeg dependency. macOS and Google Chrome are needed (`--headless` falls back to software GL, which is slow). Options: `--size=1080x1080`, `--fps`, `--speed` (tying speed), `--hold` (seconds on the finished knot).
-- Frames are JPEGs in a temporary folder that is deleted after encoding. The bitrate is 14 Mbit/s, which makes the longest knots about 35 MB; lower `AverageBitRate` in the Swift file for smaller files.
+- Frames are JPEGs in a temporary folder that is deleted after encoding (`--keep` keeps them, to inspect one). The bitrate is 14 Mbit/s, which makes the longest knots about 35 MB; lower `AverageBitRate` in the Swift file for smaller files.
 
 ## Gotchas
 

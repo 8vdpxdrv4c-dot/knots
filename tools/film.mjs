@@ -1,6 +1,6 @@
 // Renders knots as MP4 films for sharing: videos/<id>.mp4. Real rope, scripted camera,
 // step captions. Run: node tools/film.mjs bowline zeppelin   (or --all)
-// Options: --size=1920x1080  --fps=30  --speed=1 (tying speed)  --hold=3.2 (seconds on the finished
+// --cut=full|hands|cinch|all (comma list ok; default full). Options: --size=1920x1080  --fps=30  --speed=1 (tying speed)  --hold=3.2 (seconds on the finished
 // knot)  --headless (software GL: slow). Needs Google Chrome for fast GPU drawing, and macOS to encode.
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -12,8 +12,10 @@ const flag = (name, fallback) =>
   args.find((a) => a.startsWith(`--${name}=`))?.split("=")[1] ?? fallback;
 const [W, H] = flag("size", "1920x1080").split("x").map(Number);
 const fps = Number(flag("fps", 30));
-const speed = flag("speed", "1");
-const hold = flag("hold", "3.2");
+const speed = flag("speed", ""); // "" = each cut's own pace
+const hold = flag("hold", "");
+// full: the captioned tutorial; hands: fast, shows the invisible hands; cinch: the last pull, close up.
+const cuts = flag("cut", "full").replace("all", "full,hands,cinch").split(",");
 const headless = args.includes("--headless");
 const root = new URL(".", import.meta.url).pathname;
 const outDir = `${root}out/film/`; // frames and the encoder, thrown away
@@ -39,13 +41,15 @@ const encoder = `${outDir}encode-video`;
 if (!existsSync(encoder))
   execFileSync("swiftc", ["-O", `${root}encode-video.swift`, "-o", encoder], { stdio: "inherit" });
 
-for (const id of ids) {
-  const url = `http://localhost:5180/film.html?knot=${id}&w=${W}&h=${H}&fps=${fps}&speed=${speed}&hold=${hold}`;
+for (const [id, cut] of ids.flatMap((id) => cuts.map((cut) => [id, cut]))) {
+  const name = cut === "full" ? id : `${id}-${cut}`;
+  const extra = (speed && `&speed=${speed}`) + (hold && `&hold=${hold}`);
+  const url = `http://localhost:5180/film.html?knot=${id}&cut=${cut}&w=${W}&h=${H}&fps=${fps}${extra}`;
   await page.goto(url, { waitUntil: "commit" }); // the bake blocks "load"
   const film = await (
     await page.waitForFunction(() => window.film, null, { timeout: 600_000 })
   ).jsonValue();
-  const frames = `${outDir}${id}-frames/`;
+  const frames = `${outDir}${name}-frames/`;
   rmSync(frames, { recursive: true, force: true });
   mkdirSync(frames, { recursive: true });
   for (let i = 0; i < film.frames; i++) {
@@ -54,11 +58,11 @@ for (const id of ids) {
       `${frames}${String(i).padStart(5, "0")}.jpg`,
       Buffer.from(data.split(",")[1], "base64"),
     );
-    if (i % 60 === 0) console.log(`${id}: frame ${i}/${film.frames}`);
+    if (i % 60 === 0) console.log(`${name}: frame ${i}/${film.frames}`);
   }
-  const mp4 = `${videoDir}${id}.mp4`;
+  const mp4 = `${videoDir}${name}.mp4`;
   execFileSync(encoder, [frames, String(fps), mp4], { stdio: "inherit" });
-  rmSync(frames, { recursive: true, force: true });
+  if (!args.includes("--keep")) rmSync(frames, { recursive: true, force: true }); // --keep: look at the frames
   console.log(mp4, `(${film.seconds.toFixed(1)} s)`);
 }
 await browser.close();
