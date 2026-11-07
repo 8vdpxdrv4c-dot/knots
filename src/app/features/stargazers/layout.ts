@@ -19,7 +19,7 @@ export function knotFor(id: number): KnotKind {
 }
 
 // Rope lengths, in rope diameters.
-const LEAD = 8; // bare rope before the first knot and after the last
+export const LEAD = 8; // bare rope before the first knot and after the last
 const TIGHT = 5; // knot to knot for stars given moments apart: the knot and its avatars just fit
 const STEP = 3.2; // extra rope each time the wait between two stars doubles, past the usual wait
 const LOOSE = 34; // the most rope one lull gets, however long it was

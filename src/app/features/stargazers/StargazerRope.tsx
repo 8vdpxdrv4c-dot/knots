@@ -3,13 +3,15 @@ import { useMountEffect } from "../../shared/hooks";
 import { knotPath } from "../../shared/site";
 import { PauseIcon, PlayIcon, SearchIcon } from "../../shared/ui/icons";
 import { type Feed, decodeFeed } from "./feed";
-import { knotFor } from "./layout";
+import { knotFor, ropeLayout } from "./layout";
 import { markPromptSeen } from "./prompt";
 import { type Star, StarRope, countAt } from "./rope";
 import styles from "./stargazers.module.css";
 
 /** How long the replay takes: a beat per star, so a few stars don't crawl, up to six seconds. */
 const playMs = (stars: number) => Math.min(800 + stars * 150, 6000);
+/** The replay ties only the newest stars, slowly enough to watch; the older ones are already on the rope. */
+const REPLAY = 50;
 const MILESTONES = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000];
 const WEEK = 7 * 864e5;
 const avatar = (s: Star, size: number) => `${s.user.avatar_url}&s=${size}`;
@@ -45,24 +47,40 @@ export function StargazerRope({ src, repoUrl }: { src: string; repoUrl: string }
   const last = stars.length ? Date.parse(stars[stars.length - 1].starred_at) : 0;
   const count = countAt(stars, time);
 
-  const seek = (t: number, list = stars) => {
+  const seek = (t: number, list = stars, along?: number) => {
     setTime(t);
-    rope.current?.setCount(countAt(list, t));
+    rope.current?.setCount(countAt(list, t), along);
   };
   const stop = () => {
     cancelAnimationFrame(raf.current);
     setPlaying(false);
   };
   const play = (list = stars) => {
-    const a = Date.parse(list[0].starred_at);
-    const b = Date.parse(list[list.length - 1].starred_at);
-    const from = time > a && time < b ? time : a;
-    const ms = playMs(list.length);
-    const t0 = performance.now() - ((from - a) / (b - a || 1)) * ms;
+    // Along the rope at an even speed that eases to a stop, not evenly through the dates: a burst
+    // of stars would tie dozens of knots in one frame and a quiet month would stall.
+    const times = list.map((s) => Date.parse(s.starred_at));
+    const n = times.length;
+    // Carry on from a paused replay, else start REPLAY stars before the newest.
+    const mid = time > times[0] && time < times[n - 1];
+    const i0 = mid ? Math.max(countAt(list, time) - 1, 0) : Math.max(n - REPLAY, 0);
+    const { knots } = ropeLayout(times, n);
+    /** The date at which the replay is `s` diameters along the rope, between its two stars. */
+    const timeAt = (s: number) => {
+      let i = i0;
+      while (i < n - 1 && knots[i + 1] <= s) i++;
+      if (i === n - 1) return times[i];
+      return times[i] + ((times[i + 1] - times[i]) * (s - knots[i])) / (knots[i + 1] - knots[i]);
+    };
+    const ms = playMs(n - i0);
+    const t0 = performance.now();
     setPlaying(true);
     const tick = (now: number) => {
-      const u = Math.min((now - t0) / ms, 1);
-      seek(a + (b - a) * u, list);
+      // rAF's timestamp can be a little before t0 on the first frame.
+      const u = Math.min(Math.max((now - t0) / ms, 0), 1);
+      // Starts brisk (1.6× the average speed) and eases to 0.4× by the newest knot, where the
+      // rope's own spring brings it to rest.
+      const s = knots[i0] + (knots[n - 1] - knots[i0]) * (u + 0.6 * u * (1 - u));
+      seek(timeAt(s), list, u < 1 ? s : undefined);
       if (u < 1) raf.current = requestAnimationFrame(tick);
       else setPlaying(false);
     };
