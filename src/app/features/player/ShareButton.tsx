@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCopy } from "../../shared/locale";
 import { absoluteUrl } from "../../shared/site";
 import { CheckIcon, ShareIcon } from "../../shared/ui/icons";
 import styles from "./player.module.css";
@@ -6,14 +7,15 @@ import styles from "./player.module.css";
 /** Shares a link to this knot's page: the system share sheet on touch devices, a copied link elsewhere. */
 export function ShareButton({ name, path }: { name: string; path: string }) {
   const [copied, setCopied] = useState(false);
+  const copy = useCopy();
 
   async function share() {
     const url = absoluteUrl(path);
     try {
       if (navigator.share && matchMedia("(pointer: coarse)").matches) {
         await navigator.share({
-          title: `${name} · Knots Made Easy`,
-          text: `${name}, step by step`,
+          title: copy.shareTitle(name),
+          text: copy.shareText(name),
           url,
         });
         return;
@@ -31,15 +33,15 @@ export function ShareButton({ name, path }: { name: string; path: string }) {
       <button
         type="button"
         className={styles.share}
-        aria-label="Share this knot"
-        title="Share this knot"
+        aria-label={copy.share}
+        title={copy.share}
         onClick={share}
       >
         {copied ? <CheckIcon /> : <ShareIcon />}
       </button>
       {copied && (
         <span role="status" className={styles.toast}>
-          Link copied
+          {copy.linkCopied}
         </span>
       )}
     </span>

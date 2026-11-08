@@ -29,6 +29,14 @@
   color: var(--accent);
 }
 
+.stepTitle {
+  min-width: 0;
+}
+
+:global(html:lang(zh-CN)) .step {
+  line-height: 1.55;
+}
+
 .bar {
   display: flex;
   align-items: center;

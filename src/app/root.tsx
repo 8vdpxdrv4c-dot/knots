@@ -5,14 +5,18 @@ import {
   Scripts,
   ScrollRestoration,
   isRouteErrorResponse,
+  useLocation,
 } from "react-router";
+import { isZhKnot } from "./shared/copy";
 import { SITE_DESCRIPTION, SITE_NAME } from "./shared/site";
 import "./styles/global.css";
 import type { Route } from "./+types/root";
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const knotId = useLocation().pathname.match(/\/knots\/([^/]+)/)?.[1] ?? "";
+  const lang = isZhKnot(decodeURIComponent(knotId)) ? "zh-CN" : "en";
   return (
-    <html lang="en">
+    <html lang={lang}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />

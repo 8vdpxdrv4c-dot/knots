@@ -402,6 +402,7 @@
 
 .prompt div {
   display: flex;
+  flex-wrap: wrap;
   gap: 14px;
   align-items: center;
 }

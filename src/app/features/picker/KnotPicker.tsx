@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { Link } from "react-router";
 import type { KnotDef } from "../../../engine/knots/types";
+import { useCopy } from "../../shared/locale";
 import { knotImagePath, knotPath } from "../../shared/site";
 import { CloseIcon, MenuIcon } from "../../shared/ui/icons";
 import styles from "./picker.module.css";
@@ -8,6 +9,7 @@ import styles from "./picker.module.css";
 /** The "All knots" button and its sheet: a grid of cards, each a link to a knot's page. */
 export function KnotPicker({ knots, currentId }: { knots: KnotDef[]; currentId: string }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const copy = useCopy();
   const close = () => dialog.current?.close();
 
   return (
@@ -19,7 +21,7 @@ export function KnotPicker({ knots, currentId }: { knots: KnotDef[]; currentId: 
         onClick={() => dialog.current?.showModal()}
       >
         <MenuIcon />
-        All knots
+        {copy.allKnots}
       </button>
       <dialog
         ref={dialog}
@@ -32,8 +34,8 @@ export function KnotPicker({ knots, currentId }: { knots: KnotDef[]; currentId: 
       >
         <div className={styles.sheet}>
           <div className={styles.head}>
-            <h2 id="picker-title">Pick a knot</h2>
-            <button type="button" className={styles.close} aria-label="Close" onClick={close}>
+            <h2 id="picker-title">{copy.pickAKnot}</h2>
+            <button type="button" className={styles.close} aria-label={copy.close} onClick={close}>
               <CloseIcon />
             </button>
           </div>

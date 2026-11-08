@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { DEFAULT_PHYSICS } from "../../../engine/sim/rope";
 import { useIsClient } from "../../shared/hooks";
+import { useCopy } from "../../shared/locale";
 import { SLIDERS, physicsFromParams, writePhysics } from "./physicsParams";
 import styles from "./tuner.module.css";
 
@@ -35,12 +36,13 @@ function TunerPanel({
   onApply: (p: typeof DEFAULT_PHYSICS) => void;
 }) {
   const [physics, setPhysics] = useState(initial);
+  const copy = useCopy();
   return (
-    <section className={styles.tuner} aria-label="Rope material">
-      <h2>Rope material</h2>
+    <section className={styles.tuner} aria-label={copy.ropeMaterial}>
+      <h2>{copy.ropeMaterial}</h2>
       {SLIDERS.map(({ key, label, min, max, step }) => (
         <label key={key} data-changed={physics[key] !== DEFAULT_PHYSICS[key]}>
-          <span>{label}</span>
+          <span>{copy.physics[key] ?? label}</span>
           <output>{physics[key]}</output>
           <input
             type="range"
@@ -61,7 +63,7 @@ function TunerPanel({
           onApply(DEFAULT_PHYSICS);
         }}
       >
-        Reset to defaults
+        {copy.resetDefaults}
       </button>
     </section>
   );
