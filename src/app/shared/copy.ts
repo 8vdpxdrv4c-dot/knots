@@ -3,6 +3,25 @@ import { SITE_NAME } from "./site";
 /** The only knot page localized to Simplified Chinese. Other knots stay in English. */
 export const ZH_KNOT_ID = "poachers-knot";
 
+/**
+ * Short Chinese names for the knot list on the Chinese page.
+ * 单结、八字结、称人结、双套结、齐柏林结、平结、双圈索结 are the usual names;
+ * the English line under each one is the site's original name, unchanged.
+ */
+export const ZH_LIST_NAMES: Record<string, string> = {
+  overhand: "单结",
+  "figure-eight": "八字结",
+  bowline: "称人结",
+  "clove-hitch": "双套结",
+  zeppelin: "齐柏林结",
+  "square-knot": "平结",
+  "poachers-knot": "双圈索结",
+};
+
+/** Original English name for the list. The poacher's page title also carries the Chinese name. */
+export const listEnglishName = (knot: { id: string; name: string }) =>
+  knot.id === ZH_KNOT_ID ? "Poacher's knot" : knot.name;
+
 export const isZhKnot = (id: string) => id === ZH_KNOT_ID;
 
 export type UiLocale = "en" | "zh-CN";
@@ -94,7 +113,7 @@ const en: Copy = {
 const zh: Copy = {
   eyebrow: "轻松打绳结",
   siteName: "轻松打绳结",
-  allKnots: "全部绳结",
+  allKnots: "全部绳结 / All knots",
   pickAKnot: "选择绳结",
   close: "关闭",
   viewSource: "在 GitHub 上查看源码",

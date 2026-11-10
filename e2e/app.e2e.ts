@@ -106,13 +106,17 @@ test("the poacher's knot page is simplified Chinese", async ({ page }) => {
   await expect(page.locator("section p").filter({ hasText: "适合做套索和捆扎。" })).toBeVisible();
   await expect(page.getByLabel("播放控制")).toContainText("折出绳耳，把绳头搭在主绳上");
   await expect(page.getByRole("button", { name: "播放" })).toBeVisible();
-  const knots = page.getByRole("navigation", { name: "全部绳结" });
+  const knots = page.getByRole("navigation", { name: "全部绳结 / All knots" });
   await expect(knots).toBeVisible();
   await expect(knots.getByRole("link")).toHaveCount(7);
   await expect(knots.getByRole("link", { name: /双圈索结/ })).toHaveAttribute(
     "aria-current",
     "page",
   );
+  await expect(knots.getByRole("link", { name: /双圈索结/ })).toContainText("Poacher's knot");
+  await expect(knots.getByRole("link", { name: /单结/ })).toContainText("Overhand knot");
+  await expect(knots.getByRole("link", { name: /称人结/ })).toContainText("Bowline");
+  await expect(knots.getByRole("link", { name: /双套结/ })).toContainText("Clove hitch – rope end");
   await expect(page.getByRole("link", { name: "在 GitHub 上查看源码" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "重置视角" })).toBeVisible();
   await expect(page.getByRole("button", { name: "分享这个绳结" })).toBeVisible();

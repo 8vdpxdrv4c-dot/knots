@@ -1,7 +1,14 @@
 import { expect, test } from "vitest";
 import { knots } from "../../engine/knots";
 import { poachersKnot } from "../../engine/knots/poachers-knot";
-import { imageAltFor, isZhKnot, pageCopy, siteNameFor } from "./copy";
+import {
+  ZH_LIST_NAMES,
+  imageAltFor,
+  isZhKnot,
+  listEnglishName,
+  pageCopy,
+  siteNameFor,
+} from "./copy";
 
 test("the poacher's knot page is simplified Chinese and keeps its English name", () => {
   expect(poachersKnot.name).toBe("双圈索结（Poacher's\u00A0knot）");
@@ -22,6 +29,22 @@ test("the poacher's knot page is simplified Chinese and keeps its English name",
   expect(pageCopy("zh-CN").creditBefore + "@baz7c8" + pageCopy("zh-CN").creditAfter).toBe(
     "由 @baz7c8 制作",
   );
+});
+
+test("the Chinese knot list pairs each usual name with the original English name", () => {
+  expect(pageCopy("zh-CN").allKnots).toBe("全部绳结 / All knots");
+  expect(ZH_LIST_NAMES).toEqual({
+    overhand: "单结",
+    "figure-eight": "八字结",
+    bowline: "称人结",
+    "clove-hitch": "双套结",
+    zeppelin: "齐柏林结",
+    "square-knot": "平结",
+    "poachers-knot": "双圈索结",
+  });
+  for (const knot of knots) {
+    expect(listEnglishName(knot)).toBe(knot.id === "poachers-knot" ? "Poacher's knot" : knot.name);
+  }
 });
 
 test("other knot pages stay in English", () => {

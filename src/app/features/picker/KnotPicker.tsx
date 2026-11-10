@@ -2,13 +2,15 @@ import { useRef } from "react";
 import { Link } from "react-router";
 import type { KnotDef } from "../../../engine/knots/types";
 import { useMountEffect } from "../../shared/hooks";
-import { useCopy } from "../../shared/locale";
+import { ZH_LIST_NAMES, listEnglishName } from "../../shared/copy";
+import { useCopy, useLocale } from "../../shared/locale";
 import { knotPath } from "../../shared/site";
 import styles from "./picker.module.css";
 
 /** A short, scrollable list of every knot, fixed on the right of the page. */
 export function KnotPicker({ knots, currentId }: { knots: KnotDef[]; currentId: string }) {
   const copy = useCopy();
+  const bilingual = useLocale() === "zh-CN";
   const current = useRef<HTMLAnchorElement>(null);
   useMountEffect(() => {
     current.current?.scrollIntoView({ block: "nearest" });
@@ -25,7 +27,14 @@ export function KnotPicker({ knots, currentId }: { knots: KnotDef[]; currentId: 
               to={knotPath(k.id)}
               aria-current={k.id === currentId ? "page" : undefined}
             >
-              {k.name}
+              {bilingual ? (
+                <>
+                  <span className={styles.primary}>{ZH_LIST_NAMES[k.id] ?? k.name}</span>
+                  <span className={styles.secondary}>{listEnglishName(k)}</span>
+                </>
+              ) : (
+                k.name
+              )}
             </Link>
           </li>
         ))}
