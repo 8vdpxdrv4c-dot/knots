@@ -61,6 +61,9 @@ function Session({
       <div className={styles.page} data-clean={clean} data-locale={locale}>
         <ViewerCanvas poster={knotImagePath(knot.id)} start={start} onViewer={setViewer} />
         <header className={styles.top}>
+          <a className={styles.brand} href="https://www.3dfans.site/">
+            3Dfans
+          </a>
           <button
             type="button"
             className={`${iconButtonClass} ${styles.hide}`}
@@ -97,13 +100,6 @@ function Session({
           />
           <Tuner />
         </div>
-        <footer className={`${styles.credit} ${styles.chrome}`}>
-          {copy.creditBefore}
-          <a href="https://x.com/baz7c8" target="_blank" rel="noopener">
-            @baz7c8
-          </a>
-          {copy.creditAfter}
-        </footer>
       </div>
     </LocaleProvider>
   );

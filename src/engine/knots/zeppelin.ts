@@ -45,9 +45,8 @@ const R_LOW = R_IN + Math.PI * RR;
 
 export const zeppelin: KnotDef = {
   id: "zeppelin",
-  name: "Zeppelin bend",
-  summary:
-    "Joins two ropes securely. It holds under heavy load and still unties easily afterwards.",
+  name: "齐柏林结（Zeppelin\u00A0bend）",
+  summary: "把两根绳子牢固地接在一起。重载下仍然可靠，之后也容易解开。",
   ropes: [
     { length: BLUE, radius: R, color: "#2f5fb3", start: blueStart },
     { length: RED, radius: R, start: redStart },
@@ -55,13 +54,13 @@ export const zeppelin: KnotDef = {
   duration: 11.7,
   // Each move starts while the one before it finishes, so the hands never all stand still.
   steps: [
-    { t: 0, title: "Bend both ends into U shapes, blue over red" },
-    { t: 0.2, title: "Red end: under its own rope, closing a loop" },
-    { t: 2.0, title: "Blue end: over its own rope, closing a loop on top" },
-    { t: 4.0, title: "Blue tail: under the near side and up through both loops" },
-    { t: 6.4, title: "Red tail: over the far side and down through both loops" },
-    { t: 8.9, title: "Pull the tails, then the standing parts, to set the knot" },
-    { t: 11.1, title: "Done: a Zeppelin bend" },
+    { t: 0, title: "把两端都弯成 U 形，蓝绳压在红绳上" },
+    { t: 0.2, title: "红绳绳头：从自己的绳子下方穿过，收成一个绳圈" },
+    { t: 2.0, title: "蓝绳绳头：从自己的绳子上方绕过，在上面收成一个绳圈" },
+    { t: 4.0, title: "蓝绳绳尾：从近侧下方绕过，再向上穿出两个绳圈" },
+    { t: 6.4, title: "红绳绳尾：从远侧上方绕过，再向下穿进两个绳圈" },
+    { t: 8.9, title: "先拉绳尾，再拉主绳，把结收紧" },
+    { t: 11.1, title: "完成：齐柏林结" },
   ],
   guides: [
     // Hands hold each U where it lies, so drawing the tails round cannot drag the loops out of place.

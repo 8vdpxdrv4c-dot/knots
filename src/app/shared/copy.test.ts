@@ -1,14 +1,7 @@
 import { expect, test } from "vitest";
 import { knots } from "../../engine/knots";
 import { poachersKnot } from "../../engine/knots/poachers-knot";
-import {
-  ZH_LIST_NAMES,
-  imageAltFor,
-  isZhKnot,
-  listEnglishName,
-  pageCopy,
-  siteNameFor,
-} from "./copy";
+import { ZH_LIST_NAMES, imageAltFor, listEnglishName, pageCopy, siteNameFor } from "./copy";
 
 test("the poacher's knot page is simplified Chinese and keeps its English name", () => {
   expect(poachersKnot.name).toBe("双圈索结（Poacher's\u00A0knot）");
@@ -25,10 +18,7 @@ test("the poacher's knot page is simplified Chinese and keeps its English name",
   ]);
   expect(poachersKnot.steps.map((step) => step.t)).toEqual([0, 0.3, 3.37, 8.02, 10.32, 11.23]);
   expect(siteNameFor(poachersKnot.id)).toBe("轻松打绳结");
-  expect(imageAltFor(poachersKnot)).toBe("打好的双圈索结（Poacher's\u00A0knot）");
-  expect(pageCopy("zh-CN").creditBefore + "@baz7c8" + pageCopy("zh-CN").creditAfter).toBe(
-    "由 @baz7c8 制作",
-  );
+  expect(imageAltFor(poachersKnot)).toBe(`打好的${poachersKnot.name}`);
 });
 
 test("the Chinese knot list pairs each usual name with the original English name", () => {
@@ -43,21 +33,32 @@ test("the Chinese knot list pairs each usual name with the original English name
     "poachers-knot": "双圈索结",
   });
   for (const knot of knots) {
-    expect(listEnglishName(knot)).toBe(knot.id === "poachers-knot" ? "Poacher's knot" : knot.name);
+    expect(listEnglishName(knot)).toBe(
+      {
+        overhand: "Overhand knot",
+        "figure-eight": "Figure-eight knot",
+        bowline: "Bowline",
+        "clove-hitch": "Clove hitch – rope end",
+        zeppelin: "Zeppelin bend",
+        "square-knot": "Square knot",
+        "poachers-knot": "Poacher's knot",
+      }[knot.id],
+    );
+    expect(knot.name.replaceAll("\u00a0", " ")).toContain(listEnglishName(knot));
   }
 });
 
-test("other knot pages stay in English", () => {
-  const en = pageCopy("en");
-  expect(en.allKnots).toBe("All knots");
-  expect(en.play).toBe("Play");
-  expect(en.pause).toBe("Pause");
-  expect(en.creditBefore).toBe("made by ");
+test("every knot page is simplified Chinese and keeps the safety notes", () => {
   for (const knot of knots) {
-    if (isZhKnot(knot.id)) continue;
-    expect(knot.name).toMatch(/^[A-Za-z]/);
-    expect(knot.summary).not.toMatch(/[\u4e00-\u9fff]/);
-    expect(siteNameFor(knot.id)).toBe("Knots Made Easy");
-    expect(imageAltFor(knot)).toBe(`A finished ${knot.name.toLowerCase()}`);
+    expect(knot.name).toMatch(/[\u4e00-\u9fff]/);
+    expect(knot.summary).toMatch(/[\u4e00-\u9fff]/);
+    expect(knot.steps.every((step) => /[\u4e00-\u9fff]/.test(step.title))).toBe(true);
+    expect(siteNameFor(knot.id)).toBe("轻松打绳结");
+    expect(imageAltFor(knot)).toBe(`打好的${knot.name}`);
   }
+  expect(knots.find((knot) => knot.id === "square-knot")?.summary).toContain(
+    "不要用于承受重要载荷",
+  );
+  expect(knots.find((knot) => knot.id === "clove-hitch")?.summary).toContain("可能会滑脱");
+  expect(knots.find((knot) => knot.id === "bowline")?.summary).toContain("不松脱、不咬死");
 });

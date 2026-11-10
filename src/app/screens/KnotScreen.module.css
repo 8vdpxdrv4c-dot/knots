@@ -10,6 +10,20 @@
   gap: 8px;
 }
 
+.brand {
+  margin-right: auto;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.brand:hover {
+  color: var(--accent);
+}
+
 .intro {
   position: fixed;
   top: 68px;
@@ -66,21 +80,6 @@
   color: var(--muted);
   line-height: 1.45;
   text-wrap: pretty;
-}
-
-.credit {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 12px;
-  font-size: 12px;
-  color: var(--muted);
-  text-align: center;
-}
-
-.credit a {
-  color: inherit;
-  font-weight: 600;
 }
 
 @media (max-width: 560px) {

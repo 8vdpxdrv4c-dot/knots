@@ -13,9 +13,8 @@ const SPAN = 0.4; // the supports stand at x = ±SPAN
 
 export const cloveHitch: KnotDef = {
   id: "clove-hitch",
-  name: "Clove hitch – rope end",
-  summary:
-    "Ties a rope to a rail or post quickly. Easy to adjust, but it can slip when the load turns the rail.",
+  name: "双套结（Clove hitch – rope end）",
+  summary: "能很快把绳子系到横杆或柱子上。便于调节，但受力让横杆转动时，它可能会滑脱。",
   ropes: [
     {
       length: 1.079,
@@ -44,13 +43,13 @@ export const cloveHitch: KnotDef = {
   ],
   duration: 9.2,
   steps: [
-    { t: 0, title: "Lay the rope over the rail" },
-    { t: 0.4, title: "Bring the end round and under the rail" },
-    { t: 2.6, title: "Cross over the standing part" },
-    { t: 4.0, title: "Round the rail again" },
-    { t: 5.4, title: "Tuck the end under the crossing" },
-    { t: 6.8, title: "Pull both ends to tighten" },
-    { t: 8.4, title: "Done: a clove hitch" },
+    { t: 0, title: "把绳子搭在横杆上" },
+    { t: 0.4, title: "绳头绕过横杆，再从下方绕回来" },
+    { t: 2.6, title: "从主绳上方交叉过去" },
+    { t: 4.0, title: "再绕横杆一圈" },
+    { t: 5.4, title: "把绳头穿进交叉处的下方" },
+    { t: 6.8, title: "两端对拉收紧" },
+    { t: 8.4, title: "完成：双套结" },
   ],
   guides: [
     // Holds the standing part just short of the rail while the end goes round.

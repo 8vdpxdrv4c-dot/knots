@@ -18,20 +18,29 @@ export const ZH_LIST_NAMES: Record<string, string> = {
   "poachers-knot": "双圈索结",
 };
 
-/** Original English name for the list. The poacher's page title also carries the Chinese name. */
+/** Original English names, kept under the Chinese label in the side list. */
+export const LIST_ENGLISH_NAMES: Record<string, string> = {
+  overhand: "Overhand knot",
+  "figure-eight": "Figure-eight knot",
+  bowline: "Bowline",
+  "clove-hitch": "Clove hitch – rope end",
+  zeppelin: "Zeppelin bend",
+  "square-knot": "Square knot",
+  "poachers-knot": "Poacher's knot",
+};
+
 export const listEnglishName = (knot: { id: string; name: string }) =>
-  knot.id === ZH_KNOT_ID ? "Poacher's knot" : knot.name;
+  LIST_ENGLISH_NAMES[knot.id] ?? knot.name;
 
 export const isZhKnot = (id: string) => id === ZH_KNOT_ID;
 
 export type UiLocale = "en" | "zh-CN";
 
-/** Document title suffix and share-sheet site name for one knot page. */
-export const siteNameFor = (id: string) => (isZhKnot(id) ? "轻松打绳结" : SITE_NAME);
+/** Document title suffix and share-sheet site name. Every knot page in this build is Chinese. */
+export const siteNameFor = (_id: string) => "轻松打绳结";
 
 /** Open Graph image description. */
-export const imageAltFor = (knot: { id: string; name: string }) =>
-  isZhKnot(knot.id) ? `打好的${knot.name}` : `A finished ${knot.name.toLowerCase()}`;
+export const imageAltFor = (knot: { id: string; name: string }) => `打好的${knot.name}`;
 
 export type Copy = {
   eyebrow: string;

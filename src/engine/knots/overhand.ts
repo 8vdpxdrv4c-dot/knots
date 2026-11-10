@@ -6,9 +6,8 @@ const R = 0.012;
 
 export const overhand: KnotDef = {
   id: "overhand",
-  name: "Overhand knot",
-  summary:
-    "The simplest knot and the base of many others. Use it as a stopper at the end of a rope.",
+  name: "单结（Overhand\u00A0knot）",
+  summary: "最简单的绳结，也是许多其他绳结的基础。可在绳头做挡结，防止绳子从孔里滑脱。",
   ropes: [
     {
       length: 1.2,
@@ -21,11 +20,11 @@ export const overhand: KnotDef = {
   ],
   duration: 7.6,
   steps: [
-    { t: 0, title: "Lay the rope out straight" },
-    { t: 0.4, title: "Make a loop: bring the working end over the standing part" },
-    { t: 3, title: "Tuck the end under and up through the loop" },
-    { t: 4.6, title: "Pull both ends to tighten" },
-    { t: 6.6, title: "Done: an overhand knot" },
+    { t: 0, title: "把绳子拉直铺平" },
+    { t: 0.4, title: "打一个绳圈：绳头从主绳上方绕过" },
+    { t: 3, title: "绳头从绳圈下方穿上去" },
+    { t: 4.6, title: "两端对拉收紧" },
+    { t: 6.6, title: "完成：单结" },
   ],
   guides: [
     // Phase 1: one hand carries the end round and over the rope; the rope behind it falls into a

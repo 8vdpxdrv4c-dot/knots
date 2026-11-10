@@ -13,9 +13,8 @@ const tip = (m: number) => 1 - m / LENGTH;
 
 export const figureEight: KnotDef = {
   id: "figure-eight",
-  name: "Figure-eight knot",
-  summary:
-    "A bulkier stopper than the overhand, and easier to untie. The extra turn is what makes the figure eight.",
+  name: "八字结（Figure-eight\u00A0knot）",
+  summary: "比单结更粗的挡结，也更容易解开。多绕的那一圈，使它成为八字。",
   ropes: [
     {
       length: LENGTH,
@@ -28,13 +27,13 @@ export const figureEight: KnotDef = {
   ],
   duration: 17.2,
   steps: [
-    { t: 0, title: "Lay the rope out straight" },
-    { t: 0.4, title: "Fold the working end back into an S" },
-    { t: 3.9, title: "Bring the tip over the rope to make a small loop at the right" },
-    { t: 7, title: "Pass the tip under the rope, up to the top beside the loop" },
-    { t: 9.8, title: "Tuck the tip down through the loop" },
-    { t: 13.2, title: "Pull both ends to tighten" },
-    { t: 16.6, title: "Done: a figure-eight knot" },
+    { t: 0, title: "把绳子拉直铺平" },
+    { t: 0.4, title: "把绳头折回来，绕成 S 形" },
+    { t: 3.9, title: "绳头从绳子上方绕过，在右侧打出一个小绳圈" },
+    { t: 7, title: "绳头从绳子下方穿过，再绕到绳圈旁边的上方" },
+    { t: 9.8, title: "把绳头向下穿进这个绳圈" },
+    { t: 13.2, title: "两端对拉收紧" },
+    { t: 16.6, title: "完成：八字结" },
   ],
   guides: [
     // Anchor and eye pins hold until the pull has taken over, or the standing part gets dragged.
