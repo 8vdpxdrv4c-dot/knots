@@ -1,62 +1,35 @@
 import { useRef } from "react";
 import { Link } from "react-router";
 import type { KnotDef } from "../../../engine/knots/types";
+import { useMountEffect } from "../../shared/hooks";
 import { useCopy } from "../../shared/locale";
-import { knotImagePath, knotPath } from "../../shared/site";
-import { CloseIcon, MenuIcon } from "../../shared/ui/icons";
+import { knotPath } from "../../shared/site";
 import styles from "./picker.module.css";
 
-/** The "All knots" button and its sheet: a grid of cards, each a link to a knot's page. */
+/** A short, scrollable list of every knot, fixed on the right of the page. */
 export function KnotPicker({ knots, currentId }: { knots: KnotDef[]; currentId: string }) {
-  const dialog = useRef<HTMLDialogElement>(null);
   const copy = useCopy();
-  const close = () => dialog.current?.close();
+  const current = useRef<HTMLAnchorElement>(null);
+  useMountEffect(() => {
+    current.current?.scrollIntoView({ block: "nearest" });
+  });
 
   return (
-    <>
-      <button
-        type="button"
-        className={styles.trigger}
-        aria-haspopup="dialog"
-        onClick={() => dialog.current?.showModal()}
-      >
-        <MenuIcon />
-        {copy.allKnots}
-      </button>
-      <dialog
-        ref={dialog}
-        className={styles.dialog}
-        aria-labelledby="picker-title"
-        // The sheet fills the dialog, so a click on the dialog itself is a click on the backdrop.
-        onClick={(e) => {
-          if (e.target === e.currentTarget) close();
-        }}
-      >
-        <div className={styles.sheet}>
-          <div className={styles.head}>
-            <h2 id="picker-title">{copy.pickAKnot}</h2>
-            <button type="button" className={styles.close} aria-label={copy.close} onClick={close}>
-              <CloseIcon />
-            </button>
-          </div>
-          <ul className={styles.grid}>
-            {knots.map((k) => (
-              <li key={k.id}>
-                <Link
-                  to={knotPath(k.id)}
-                  className={styles.card}
-                  aria-current={k.id === currentId ? "page" : undefined}
-                  onClick={close}
-                >
-                  <img src={knotImagePath(k.id)} alt="" width={1200} height={630} loading="lazy" />
-                  <strong>{k.name}</strong>
-                  <span>{k.summary}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </dialog>
-    </>
+    <nav className={styles.rail} aria-labelledby="knot-list-title">
+      <h2 id="knot-list-title">{copy.allKnots}</h2>
+      <ul>
+        {knots.map((k) => (
+          <li key={k.id}>
+            <Link
+              ref={k.id === currentId ? current : undefined}
+              to={knotPath(k.id)}
+              aria-current={k.id === currentId ? "page" : undefined}
+            >
+              {k.name}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }

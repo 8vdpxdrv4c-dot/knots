@@ -35,7 +35,9 @@ test.describe("without JavaScript", () => {
     await expect(page.getByLabel("Playback")).toContainText("1/7");
     await expect(page.getByRole("button", { name: /^Step 7:/ })).toBeAttached();
     await expect(page.locator('img[src="/og/zeppelin.jpg"]').first()).toBeVisible();
-    await expect(page.locator("dialog a")).toHaveCount(7);
+    await expect(page.getByRole("navigation", { name: "All knots" }).getByRole("link")).toHaveCount(
+      7,
+    );
     await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
       "content",
       /\/og\/zeppelin\.jpg$/,
@@ -68,8 +70,10 @@ test("the picker switches knots without a reload, and history works", async ({ p
   const errors = collectErrors(page);
   await page.goto("/knots/overhand/");
   await page.evaluate(() => ((window as unknown as Win).marker = 1));
-  await page.getByRole("button", { name: "All knots" }).click();
-  await page.getByRole("link", { name: /Bowline/ }).click();
+  await page
+    .getByRole("navigation", { name: "All knots" })
+    .getByRole("link", { name: /^Bowline/ })
+    .click();
   await expect(page).toHaveURL(/\/knots\/bowline\/$/);
   await expect(page.getByRole("heading", { name: "Bowline" })).toBeVisible();
   await expect(page).toHaveTitle(/Bowline/);
@@ -102,16 +106,17 @@ test("the poacher's knot page is simplified Chinese", async ({ page }) => {
   await expect(page.locator("section p").filter({ hasText: "适合做套索和捆扎。" })).toBeVisible();
   await expect(page.getByLabel("播放控制")).toContainText("折出绳耳，把绳头搭在主绳上");
   await expect(page.getByRole("button", { name: "播放" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "全部绳结" })).toBeVisible();
+  const knots = page.getByRole("navigation", { name: "全部绳结" });
+  await expect(knots).toBeVisible();
+  await expect(knots.getByRole("link")).toHaveCount(7);
+  await expect(knots.getByRole("link", { name: /双圈索结/ })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(page.getByRole("link", { name: "在 GitHub 上查看源码" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "重置视角" })).toBeVisible();
   await expect(page.getByRole("button", { name: "分享这个绳结" })).toBeVisible();
   await expect(page.locator("footer")).toHaveText("由 @baz7c8 制作");
-
-  await page.getByRole("button", { name: "全部绳结" }).click();
-  await expect(page.getByRole("heading", { name: "选择绳结" })).toBeVisible();
-  await expect(page.getByRole("link", { name: /双圈索结/ })).toBeVisible();
-  await expect(page.getByRole("link", { name: /^Bowline/ })).toBeVisible();
-  await page.getByRole("button", { name: "关闭" }).click();
 
   await page.getByRole("button", { name: "第 6 步：完成：双圈索结" }).click();
   await expect(page.getByLabel("播放控制")).toContainText("完成：双圈索结");
