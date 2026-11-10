@@ -23,6 +23,11 @@
   color: var(--accent);
 }
 
+:global(html:lang(zh-CN)) .tuner h2 {
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
 .tuner label {
   display: grid;
   grid-template-columns: 1fr auto;

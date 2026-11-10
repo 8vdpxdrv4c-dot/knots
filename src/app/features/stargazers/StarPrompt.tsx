@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { useMountEffect } from "../../shared/hooks";
+import { useCopy } from "../../shared/locale";
 import { StarIcon } from "../../shared/ui/icons";
 import { markPromptSeen, promptSeen } from "./prompt";
 import styles from "./stargazers.module.css";
@@ -14,6 +15,7 @@ const DELAY_MS = 10_000;
  */
 export function StarPrompt({ repoUrl, to }: { repoUrl: string; to: string }) {
   const [open, setOpen] = useState(false);
+  const copy = useCopy();
   useMountEffect(() => {
     if (promptSeen()) return;
     const id = setTimeout(() => {
@@ -27,9 +29,10 @@ export function StarPrompt({ repoUrl, to }: { repoUrl: string; to: string }) {
   const close = () => setOpen(false);
 
   return (
-    <aside className={styles.prompt} aria-label="Join the stargazer rope">
+    <aside className={styles.prompt} aria-label={copy.promptLabel}>
       <p>
-        <strong>Enjoying it?</strong> Star the repo and your face joins the rope.
+        <strong>{copy.enjoying}</strong>
+        {copy.starPitch}
       </p>
       <div>
         <a
@@ -39,11 +42,11 @@ export function StarPrompt({ repoUrl, to }: { repoUrl: string; to: string }) {
           rel="noopener"
           onClick={close}
         >
-          <StarIcon /> Star on GitHub
+          <StarIcon /> {copy.starOnGitHub}
         </a>
-        <Link to={to}>See the rope</Link>
+        <Link to={to}>{copy.seeTheRope}</Link>
         <button type="button" onClick={close}>
-          Not now
+          {copy.notNow}
         </button>
       </div>
     </aside>

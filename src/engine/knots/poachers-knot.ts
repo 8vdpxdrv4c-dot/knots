@@ -83,18 +83,17 @@ const W1 = CORNER + 0.03; // x where the end passes under both strands: close to
 
 export const poachersKnot: KnotDef = {
   id: "poachers-knot",
-  name: "Poacher's knot",
-  summary:
-    "A double overhand noose: a loop that slides shut under load and grips hard. Good for snares and lashing.",
+  name: "双圈索结（Poacher's\u00A0knot）",
+  summary: "双反手活套，也称偷猎者结：绳圈受力后会滑紧并牢牢咬住。适合做套索和捆扎。",
   ropes: [{ length: LENGTH, radius: R, start }],
   duration: 11.94,
   steps: [
-    { t: 0, title: "Make a bight and lay the end over the standing part" },
-    { t: 0.3, title: "Bring the end under both strands and pull it snug" },
-    { t: 3.37, title: "Wrap again beside it: over both strands, then under both" },
-    { t: 8.02, title: "Push the wraps together, then tuck the end back through both to the left" },
-    { t: 10.32, title: "Pull the bight one way and both ends the other to tighten" },
-    { t: 11.23, title: "Done: a poacher's knot" },
+    { t: 0, title: "折出绳耳，把绳头搭在主绳上" },
+    { t: 0.3, title: "绳头从两股下方绕过，再拉到贴实" },
+    { t: 3.37, title: "紧挨着再缠一圈：先从两股上方越过，再从下方绕回" },
+    { t: 8.02, title: "把两圈并拢，再把绳头向左回穿这两圈" },
+    { t: 10.32, title: "绳耳向一侧拉，两端向另一侧拉，把结收紧" },
+    { t: 11.23, title: "完成：双圈索结" },
   ],
   guides: [
     { at: onS(-0.45), grab: 0.2, force: 250, path: [{ t: 10.32 }] },

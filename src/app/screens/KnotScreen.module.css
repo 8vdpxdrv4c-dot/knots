@@ -1,12 +1,27 @@
 .top {
   position: fixed;
+  z-index: 4;
   top: 12px;
   left: 16px;
   right: 16px;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   gap: 8px;
+}
+
+.brand {
+  margin-right: auto;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.brand:hover {
+  color: var(--accent);
 }
 
 .intro {
@@ -31,6 +46,27 @@
   color: var(--accent);
 }
 
+/* Chinese has no case, and wide tracking makes the short label look sparse. */
+.page[data-locale="zh-CN"] .eyebrow {
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+.page[data-locale="zh-CN"] .intro {
+  width: min(24em, calc(100% - 248px));
+}
+
+.page[data-locale="zh-CN"] .intro h1 {
+  letter-spacing: 0;
+  line-height: 1.3;
+  /* Balance pulls 结 onto the English line. Greedy wrap keeps the name together. */
+  text-wrap: wrap;
+}
+
+.page[data-locale="zh-CN"] .summary {
+  line-height: 1.65;
+}
+
 .intro h1 {
   margin: 0;
   font-size: clamp(26px, 3vw, 34px);
@@ -46,48 +82,10 @@
   text-wrap: pretty;
 }
 
-.credit {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 12px;
-  font-size: 12px;
-  color: var(--muted);
-  text-align: center;
-}
-
-.credit a {
-  color: inherit;
-  font-weight: 600;
-}
-
 @media (max-width: 560px) {
   .summary {
     font-size: 14px;
   }
-}
-
-.stars {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  margin-left: auto;
-  padding: 8px 12px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--panel);
-  backdrop-filter: var(--glass);
-  color: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.stars :global(.icon) {
-  width: 16px;
-  height: 16px;
-  color: var(--accent);
 }
 
 /* Hide-controls mode: everything but the hide button fades out and stops taking clicks. */
@@ -115,21 +113,22 @@
   opacity: 0.45;
 }
 
-/* Narrow phones: tighter header so "All knots" and the stargazer pill stay on one line. */
+/* On a phone the list sits under the title card, so the card can use the width again. */
+@media (max-width: 720px) {
+  .intro,
+  .page[data-locale="zh-CN"] .intro {
+    width: min(24em, calc(100% - 32px));
+  }
+}
+
 @media (max-width: 360px) {
   .top {
     left: 12px;
     right: 12px;
-    gap: 6px;
   }
 
-  .top > a[aria-label],
   .top .hide {
     width: 36px;
     height: 36px;
-  }
-
-  .stars {
-    padding: 8px 10px;
   }
 }

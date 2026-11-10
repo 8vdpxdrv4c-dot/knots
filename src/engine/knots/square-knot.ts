@@ -29,21 +29,20 @@ const T_FAR = T_RIM + Math.PI * W; // and where the far leg starts
 
 export const squareKnot: KnotDef = {
   id: "square-knot",
-  name: "Square knot",
-  summary:
-    "Also called the reef knot. Ties two ends together snugly, for bundles, bandages and sail reefing; not for loads that matter.",
+  name: "平结（Square\u00A0knot）",
+  summary: "也称缩帆结。把两个绳头贴紧系在一起，用于捆扎、包扎和收帆；不要用于承受重要载荷。",
   ropes: [
     { length: BLUE, radius: R, color: "#2f5fb3", start: blueStart },
     { length: TAN, radius: R, start: tanStart },
   ],
   duration: 13.9,
   steps: [
-    { t: 0, title: "Fold tan's end back into a C" },
-    { t: 2.6, title: "Blue end: in under the C's curve and out over its near leg" },
-    { t: 5.2, title: "Blue end: under both legs of the C" },
-    { t: 7.3, title: "Blue end: back over the far leg and down through the C" },
-    { t: 9.9, title: "Pull the ends, then the standing parts, to set the knot" },
-    { t: 13.3, title: "Done: a square knot" },
+    { t: 0, title: "把棕绳绳头折回来，绕成 C 形" },
+    { t: 2.6, title: "蓝绳绳头：从 C 形弯处下方穿入，再从近侧绳股上方穿出" },
+    { t: 5.2, title: "蓝绳绳头：从 C 形两股下方穿过" },
+    { t: 7.3, title: "蓝绳绳头：从远侧绳股上方绕回，再向下穿进 C 形" },
+    { t: 9.9, title: "先拉绳头，再拉主绳，把结收紧" },
+    { t: 13.3, title: "完成：平结" },
   ],
   guides: [
     // Tan's end leads the fold to the right along the far side; the curve rolls along behind it and

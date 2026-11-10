@@ -1,6 +1,7 @@
 import { useRef, useState, useSyncExternalStore } from "react";
 import { KnotViewer } from "../../../engine/render/viewer";
 import { useMountEffect } from "../../shared/hooks";
+import { useCopy } from "../../shared/locale";
 import { ResetViewIcon } from "../../shared/ui/icons";
 import styles from "./viewer.module.css";
 
@@ -23,6 +24,7 @@ export function ViewerCanvas({
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [drawn, setDrawn] = useState(false);
+  const copy = useCopy();
 
   useMountEffect(() => {
     const v = new KnotViewer(canvas.current!);
@@ -37,11 +39,7 @@ export function ViewerCanvas({
 
   return (
     <>
-      <canvas
-        ref={canvas}
-        className={styles.scene}
-        aria-label="3D view of the rope. Drag to turn it, scroll or pinch to zoom."
-      />
+      <canvas ref={canvas} className={styles.scene} aria-label={copy.scene} />
       <img className={styles.poster} src={poster} alt="" data-hidden={drawn} decoding="async" />
     </>
   );
@@ -54,6 +52,7 @@ const noViewer = () => () => {};
  * before the viewer exists too (disabled), so the page's layout is the same before and after.
  */
 export function ResetViewButton({ viewer }: { viewer: KnotViewer | null }) {
+  const copy = useCopy();
   const isDefault = useSyncExternalStore(
     viewer?.onViewChange ?? noViewer,
     () => viewer?.isDefaultView() ?? true,
@@ -63,8 +62,8 @@ export function ResetViewButton({ viewer }: { viewer: KnotViewer | null }) {
     <button
       type="button"
       className={styles.reset}
-      aria-label="Reset view"
-      title="Reset view"
+      aria-label={copy.resetView}
+      title={copy.resetView}
       disabled={isDefault}
       onClick={() => viewer?.resetView()}
     >

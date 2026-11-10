@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { useMountEffect } from "../../shared/hooks";
+import { useCopy } from "../../shared/locale";
 import { StarIcon } from "../../shared/ui/icons";
 import { type Feed, decodeFeed } from "./feed";
 import styles from "./stargazers.module.css";
@@ -16,6 +17,7 @@ export function StargazerLink({
   className: string;
 }) {
   const [faces, setFaces] = useState<string[]>([]);
+  const copy = useCopy();
   useMountEffect(() => {
     let alive = true;
     fetch(src)
@@ -36,7 +38,17 @@ export function StargazerLink({
   });
   return (
     <Link className={className} to={to}>
-      <StarIcon /> Stargazer<span className={styles.rope}> rope</span>
+      <StarIcon />
+      <span>
+        {[
+          copy.stargazerLead,
+          copy.stargazerRest ? (
+            <span key="rest" className={styles.rope}>
+              {copy.stargazerRest}
+            </span>
+          ) : null,
+        ]}
+      </span>
       <span className={styles.pillFaces} aria-hidden="true">
         {[0, 1, 2].map((i) =>
           faces[i] ? (

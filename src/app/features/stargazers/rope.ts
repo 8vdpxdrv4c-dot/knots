@@ -22,7 +22,7 @@ export type Band = { top: number; bottom: number };
 const PX = 32;
 const TIP = 5;
 const image = (src: string) => Object.assign(new Image(), { src });
-const picture = (name: string) => `/stargazers/${name}.png`;
+const picture = (name: string) => `${import.meta.env.BASE_URL}stargazers/${name}.png`;
 /** Every picture the rope draws, so the page can start loading them before the rope starts. */
 export const PICTURES = ["rope", "tip", ...KNOT_KINDS.map((k) => k.id)].map(picture);
 const AVATAR = 2.4; // avatar radius, in rope diameters: bigger than a knot, so people come first

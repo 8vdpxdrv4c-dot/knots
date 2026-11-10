@@ -1,12 +1,13 @@
 import { useNavigate } from "react-router";
 import { knots } from "../../engine/knots";
+import { poachersKnot } from "../../engine/knots/poachers-knot";
 import { KnotScreen } from "../screens/KnotScreen";
 import { useMountEffect } from "../shared/hooks";
 import { knotMeta } from "../shared/meta";
 import { knotPath } from "../shared/site";
 
-// The home page shows the first knot; its canonical link points at that knot's own page.
-export const meta = () => knotMeta(knots[0]);
+// The public entry is the localized poacher's knot. Its own page stays at /knots/poachers-knot/.
+export const meta = () => knotMeta(poachersKnot);
 
 export default function Home() {
   const navigate = useNavigate();
@@ -19,5 +20,5 @@ export default function Home() {
     const rest = params.toString().replace("tune=", "tune");
     navigate(`${knotPath(id)}${rest ? `?${rest}` : ""}`, { replace: true });
   });
-  return <KnotScreen knot={knots[0]} />;
+  return <KnotScreen knot={poachersKnot} />;
 }

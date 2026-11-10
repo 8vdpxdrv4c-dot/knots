@@ -12,9 +12,8 @@ const LIFT = 0.06; // a strand held up so the end can pass under it
 
 export const bowline: KnotDef = {
   id: "bowline",
-  name: "Bowline",
-  summary:
-    "A fixed loop at the end of a rope that will not slip or jam, and unties easily after a load.",
+  name: "称人结（Bowline）",
+  summary: "在绳端打出一个固定绳圈。受力后不松脱、不咬死，卸力后也容易解开。",
   ropes: [
     {
       length: LENGTH,
@@ -27,14 +26,14 @@ export const bowline: KnotDef = {
   ],
   duration: 18,
   steps: [
-    { t: 0, title: "Lay the rope out straight" },
-    { t: 0.4, title: "Make a small loop, with the working side on top" },
-    { t: 3.4, title: "Swing the end round to form the eye" },
-    { t: 7, title: "Up through the small loop from underneath" },
-    { t: 9.6, title: "Round behind the standing part" },
-    { t: 11.9, title: "Back down through the small loop" },
-    { t: 14.5, title: "Hold the tail against the eye, pull the standing part" },
-    { t: 17.4, title: "Done: a bowline" },
+    { t: 0, title: "把绳子拉直铺平" },
+    { t: 0.4, title: "打一个小绳圈，绳头一侧压在上面" },
+    { t: 3.4, title: "把绳头绕过来，形成大绳圈" },
+    { t: 7, title: "从下方穿进小绳圈" },
+    { t: 9.6, title: "绕到主绳后面" },
+    { t: 11.9, title: "再从上向下穿回小绳圈" },
+    { t: 14.5, title: "绳尾贴着大绳圈握住，拉主绳收紧" },
+    { t: 17.4, title: "完成：称人结" },
   ],
   guides: [
     // Holds the standing part down; once the end is round it, pulling the end would swing it about.

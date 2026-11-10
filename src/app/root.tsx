@@ -5,14 +5,17 @@ import {
   Scripts,
   ScrollRestoration,
   isRouteErrorResponse,
+  useLocation,
 } from "react-router";
 import { SITE_DESCRIPTION, SITE_NAME } from "./shared/site";
 import "./styles/global.css";
 import type { Route } from "./+types/root";
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const { pathname } = useLocation();
+  const lang = pathname === "/" || pathname.startsWith("/knots/") ? "zh-CN" : "en";
   return (
-    <html lang="en">
+    <html lang={lang}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -41,14 +44,14 @@ export default function App() {
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   const message = isRouteErrorResponse(error)
     ? `${error.status} ${error.statusText}`
-    : "Something went wrong";
+    : "出了点问题";
   return (
     <main
       style={{ display: "grid", placeContent: "center", height: "100dvh", textAlign: "center" }}
     >
       <h1>{message}</h1>
       <p>
-        <a href="/">Back to the knots</a>
+        <a href={import.meta.env.BASE_URL}>回到绳结</a>
       </p>
     </main>
   );

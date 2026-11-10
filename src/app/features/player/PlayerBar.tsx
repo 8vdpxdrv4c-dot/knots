@@ -2,6 +2,7 @@ import { type ReactNode, useSyncExternalStore } from "react";
 import type { KnotDef } from "../../../engine/knots/types";
 import type { Player } from "../../../engine/playback/player";
 import { useMountEffect } from "../../shared/hooks";
+import { useCopy } from "../../shared/locale";
 import { LoopIcon, PauseIcon, PlayIcon } from "../../shared/ui/icons";
 import styles from "./player.module.css";
 
@@ -26,23 +27,30 @@ export function PlayerBar({
   extra?: ReactNode;
 }) {
   const s = useSyncExternalStore(player.subscribe, player.getSnapshot, player.getSnapshot);
+  const copy = useCopy();
   const time = Math.min(s.time, s.duration);
   const percent = (t: number) => `${(t / s.duration) * 100}%`;
   useKeyboardShortcuts(player);
 
   return (
-    <section className={styles.player} aria-label="Playback" data-baked={s.ready >= s.duration}>
+    <section
+      className={styles.player}
+      aria-label={copy.playback}
+      data-baked={s.ready >= s.duration}
+    >
       <p className={styles.step}>
         <span className={styles.stepNum}>
           {s.step + 1}/{steps.length}
         </span>
-        <span aria-live="polite">{steps[s.step].title}</span>
+        <span className={styles.stepTitle} aria-live="polite">
+          {steps[s.step].title}
+        </span>
       </p>
       <div className={styles.bar}>
         <button
           type="button"
           className={styles.play}
-          aria-label={s.playing ? "Pause" : "Play"}
+          aria-label={s.playing ? copy.pause : copy.play}
           aria-pressed={s.playing}
           onClick={player.togglePlay}
         >
@@ -59,7 +67,7 @@ export function PlayerBar({
                 <button
                   type="button"
                   style={{ left: percent(step.t) }}
-                  aria-label={`Step ${i + 1}: ${step.title}`}
+                  aria-label={copy.step(i + 1, step.title)}
                   title={step.title}
                   aria-current={i === s.step ? "step" : undefined}
                   onClick={() => player.seek(step.t)}
@@ -74,13 +82,13 @@ export function PlayerBar({
             max={s.duration}
             step={0.01}
             value={time}
-            aria-label="Timeline"
-            aria-valuetext={`${time.toFixed(1)} of ${s.duration.toFixed(1)} seconds`}
+            aria-label={copy.timeline}
+            aria-valuetext={copy.timelineValue(time.toFixed(1), s.duration.toFixed(1))}
             onChange={(e) => player.seek(Number(e.target.value))}
           />
         </div>
         <span className={styles.clock}>{time.toFixed(1)}s</span>
-        <div className={styles.speed} role="radiogroup" aria-label="Speed">
+        <div className={styles.speed} role="radiogroup" aria-label={copy.speed}>
           {SPEEDS.map(({ value, label }) => (
             <label key={value}>
               <input
@@ -97,7 +105,7 @@ export function PlayerBar({
         <button
           type="button"
           className={styles.loop}
-          aria-label="Loop"
+          aria-label={copy.loop}
           aria-pressed={s.loop}
           onClick={player.toggleLoop}
         >

@@ -1,9 +1,10 @@
 .player {
   position: fixed;
-  left: 50%;
+  left: 16px;
+  right: 244px;
   bottom: 40px;
-  transform: translateX(-50%);
-  width: min(760px, calc(100% - 32px));
+  width: auto;
+  max-width: 760px;
   padding: 14px 16px 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -27,6 +28,14 @@
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   color: var(--accent);
+}
+
+.stepTitle {
+  min-width: 0;
+}
+
+:global(html:lang(zh-CN)) .step {
+  line-height: 1.55;
 }
 
 .bar {
@@ -185,6 +194,16 @@
 .loop[aria-pressed="true"] {
   background: var(--accent-soft);
   color: var(--accent);
+}
+
+@media (max-width: 720px) {
+  .player {
+    left: 50%;
+    right: auto;
+    width: min(760px, calc(100% - 32px));
+    max-width: none;
+    transform: translateX(-50%);
+  }
 }
 
 @media (max-width: 560px) {

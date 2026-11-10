@@ -8,7 +8,10 @@ export default defineConfig({
   testMatch: "*.e2e.ts",
   timeout: 90_000,
   expect: { timeout: 20_000 },
-  use: { baseURL: "http://localhost:5174", reducedMotion: "reduce" },
+  use: {
+    baseURL: "http://localhost:5174/projects/knots-made-easy-zh/",
+    reducedMotion: "reduce",
+  },
   projects: [
     {
       name: "chromium",
