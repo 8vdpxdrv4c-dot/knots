@@ -11,7 +11,7 @@ const collectErrors = (page: Page) => {
 
 test("a knot page bakes, plays, steps and scrubs", async ({ page }) => {
   const errors = collectErrors(page);
-  await page.goto("/knots/overhand/");
+  await page.goto("knots/overhand/");
   await expect(page.getByRole("heading", { name: "Overhand knot" })).toBeVisible();
   await expect(page.locator("[data-baked=true]")).toBeVisible({ timeout: 60_000 });
 
@@ -30,11 +30,13 @@ test.describe("without JavaScript", () => {
   test.use({ javaScriptEnabled: false });
 
   test("the prerendered page has the whole layout, the poster and share tags", async ({ page }) => {
-    await page.goto("/knots/zeppelin/");
+    await page.goto("knots/zeppelin/");
     await expect(page.getByRole("heading", { name: "Zeppelin bend" })).toBeVisible();
     await expect(page.getByLabel("Playback")).toContainText("1/7");
     await expect(page.getByRole("button", { name: /^Step 7:/ })).toBeAttached();
-    await expect(page.locator('img[src="/og/zeppelin.jpg"]').first()).toBeVisible();
+    await expect(
+      page.locator('img[src="/projects/knots-made-easy-zh/og/zeppelin.jpg"]').first(),
+    ).toBeVisible();
     await expect(page.getByRole("navigation", { name: "All knots" }).getByRole("link")).toHaveCount(
       7,
     );
@@ -44,7 +46,7 @@ test.describe("without JavaScript", () => {
     );
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
-      /\/knots\/zeppelin\/$/,
+      "https://www.3dfans.site/projects/knots-made-easy-zh/knots/zeppelin/",
     );
   });
 });
@@ -60,7 +62,7 @@ test("loading does not shift the layout", async ({ page }) => {
         if (!e.hadRecentInput) (window as unknown as Win).cls += e.value;
     }).observe({ type: "layout-shift", buffered: true });
   });
-  await page.goto("/knots/bowline/");
+  await page.goto("knots/bowline/");
   await expect(page.locator("canvas")).toBeVisible();
   await page.waitForTimeout(1500);
   expect(await page.evaluate(() => (window as unknown as Win).cls)).toBe(0);
@@ -68,7 +70,7 @@ test("loading does not shift the layout", async ({ page }) => {
 
 test("the picker switches knots without a reload, and history works", async ({ page }) => {
   const errors = collectErrors(page);
-  await page.goto("/knots/overhand/");
+  await page.goto("knots/overhand/");
   await page.evaluate(() => ((window as unknown as Win).marker = 1));
   await page
     .getByRole("navigation", { name: "All knots" })
@@ -85,7 +87,7 @@ test("the picker switches knots without a reload, and history works", async ({ p
 });
 
 test("reset view returns the camera after a drag", async ({ page }) => {
-  await page.goto("/knots/overhand/");
+  await page.goto("knots/overhand/");
   const reset = page.getByRole("button", { name: "Reset view" });
   await expect(reset).toBeDisabled();
   const box = (await page.locator("canvas").boundingBox())!;
@@ -98,8 +100,23 @@ test("reset view returns the camera after a drag", async ({ page }) => {
   await expect(reset).toBeDisabled();
 });
 
+test("the public entry is the localized poacher's knot and stays on the subpath", async ({
+  page,
+}) => {
+  await page.goto("./");
+  await expect(page).toHaveURL(/\/projects\/knots-made-easy-zh\/?$/);
+  await expect(page.getByRole("heading", { name: /双圈索结/ })).toBeVisible();
+  const hrefs = await page
+    .locator("nav a")
+    .evaluateAll((links) => links.map((link) => link.getAttribute("href")));
+  expect(hrefs.length).toBeGreaterThan(0);
+  for (const href of hrefs) {
+    expect(href).toMatch(/^\/projects\/knots-made-easy-zh\/knots\//);
+  }
+});
+
 test("the poacher's knot page is simplified Chinese", async ({ page }) => {
-  await page.goto("/knots/poachers-knot/");
+  await page.goto("knots/poachers-knot/");
   await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
   await expect(page).toHaveTitle(/双圈索结（Poacher's\s+knot） · 轻松打绳结/);
   await expect(page.getByRole("heading", { name: /双圈索结（Poacher's\s+knot）/ })).toBeVisible();
@@ -127,9 +144,9 @@ test("the poacher's knot page is simplified Chinese", async ({ page }) => {
 });
 
 test("old ?knot= links redirect and unknown pages are a 404", async ({ page }) => {
-  await page.goto("/?knot=zeppelin");
-  await expect(page).toHaveURL(/\/knots\/zeppelin\/$/);
-  const response = await page.goto("/knots/no-such-knot/");
+  await page.goto("?knot=zeppelin");
+  await expect(page).toHaveURL(/\/projects\/knots-made-easy-zh\/knots\/zeppelin\/$/);
+  const response = await page.goto("knots/no-such-knot/");
   expect(response?.status()).toBe(404);
   await expect(page.getByRole("heading", { name: /isn’t here/ })).toBeVisible();
 });

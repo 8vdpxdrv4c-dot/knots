@@ -52,7 +52,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
     >
       <h1>{message}</h1>
       <p>
-        <a href="/">Back to the knots</a>
+        <a href={import.meta.env.BASE_URL}>Back to the knots</a>
       </p>
     </main>
   );
